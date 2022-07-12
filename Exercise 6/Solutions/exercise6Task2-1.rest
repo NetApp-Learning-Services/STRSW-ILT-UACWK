@@ -1,0 +1,99 @@
+#Example REST API calls using the REST CLIENT extension 
+#available from the VScode marketplace
+#This example uses jsonpath to parse results and set the variables dynamically
+
+#Global Variables 
+#NOTE: These values will not work work in your environment
+#They must be changed
+@contentType = application/json
+@baseUrl = https://astra.demo.netapp.com
+@token = owL-E7hI59B1Qf7NZD2zMZkvetYNn_EH-oZBq3e1OpI=
+
+###Step 2-9 List accounts
+# @name accountsRequest
+GET {{baseUrl}}/accounts
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-14 List account users with parameters
+@defaultAccountId = {{accountsRequest.response.body.$.['items'][?(@.name=='Demo')].id}}
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/core/v1/users
+ ?include=firstName,lastName,id
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-18 Get managed clusters
+# @name managedCluster
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-22 Get the storage classes for a managed cluster
+@managedClusterId = {{managedCluster.response.body.$.['items'][?(@.name=='kubclus2')].id}} 
+# @name defaultStorageClass
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}/storageClasses
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-27 Update the default storage class for a managed cluster to san-basic
+@defaultStorageClassId = {{defaultStorageClass.response.body.$.['items'][?(@.name=='san-basic')].id}}
+
+PUT {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}
+Accept: {{contentType}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+    "type": "application/astra-managedCluster",
+    "version": "1.0",
+    "defaultStorageClass": "{{defaultStorageClassId}}"
+
+}
+
+###Step 2-33 List unmanaged apps
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
+ ?filter=managedState%20eq%20'unmanaged'
+ &include=name,id,managedState
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-37 List managed apps
+# @name managedApp
+
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
+ ?filter=managedState%20eq%20'managed'
+ &include=name,id,managedState
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-41 Get the backups for the mysqlapp 
+@managedAppId ={{managedApp.response.body.$.['items'][?(@[0] =='mysqlapp')][1]}}
+
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-45 Create a backup for a managed app
+# @name managedAppBackup
+
+POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+Accept: {{contentType}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+    "type": "application/astra-appBackup",
+    "version": "1.1"
+}
+
+###Step 2-50 Get the backup status
+@managedAppBackupId = {{managedAppBackup.response.body.$.id}}
+
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/appBackups/{{managedAppBackupId}}
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-51 Delete the backup 
+DELETE {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups/{{managedAppBackupId}}
+Accept: {{contentType}}
+Authorization: Bearer {{token}}

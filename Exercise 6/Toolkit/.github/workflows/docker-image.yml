@@ -1,0 +1,37 @@
+name: Docker Image CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'docker image tag'
+        required: true 
+        type: string
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build the Docker image
+      env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKERIMAGE_TAG: ${{ inputs.tag }}
+      run: |
+        docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+        docker build . --file Dockerfile --tag netapp/astra-toolkits:latest --tag netapp/astra-toolkits:$DOCKERIMAGE_TAG
+
+    - name: Push the Docker image
+      env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKERIMAGE_TAG: ${{ inputs.tag }}
+      run: |
+        docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
+        docker push netapp/astra-toolkits:latest
+        docker push netapp/astra-toolkits:$DOCKERIMAGE_TAG

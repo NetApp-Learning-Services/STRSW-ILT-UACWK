@@ -1,0 +1,172 @@
+pipeline {
+    agent none
+    environment {
+        MAGENTO_VERSION = '2.4.1-debian-10-r14'
+        CHART_VERSION = '14'
+        RELEASE_TYPE = 'MINOR'
+        ASTRA_TOOLKIT_VERSION = '2.0.2'
+        ASTRA_API_TOKEN = 'xxxxxxxx'
+        ASTRA_INSTANCE_ID = 'xxx-xxx-xxx-xxx-xxx'
+        ASTRA_FQDN = 'netapp-astra-control-center.org.example.com'
+        DOCKER_REGISTRY = 'docker.io/netapp-solutions-cicd'
+        PROD_NAMESPACE = 'magento-prod'
+        PROD_MAGENTO_IP = 'x.x.x.x'
+        STAGING_NAMESPACE = 'magento-staging'
+        STAGING_MAGENTO_IP = 'x.x.x.x'
+        MAGENTO_CREDS = credentials('magento-creds')
+        MAGENTO_MARIADB_CREDS = credentials('magento-mariadb-creds')
+        MAGENTO_MARIADB_ROOT_CREDS = credentials('magento-mariadb-root-creds')
+    }
+    stages{
+        stage("Build & Publish Segment") {
+            agent {label 'docker-agent'}    //run the stage on a node with docker installed
+            stages {
+                stage("Build Docker Image") {
+                    steps {
+                        sh 'wget https://github.com/bitnami/bitnami-docker-magento/archive/refs/tags/${MAGENTO_VERSION}.tar.gz'
+                        sh 'tar -xvzf ${MAGENTO_VERSION}.tar.gz'
+                        script {
+                            def dockerImage = docker.build("${DOCKER_REGISTRY}/magento:${MAGENTO_VERSION}", "./bitnami-docker-magento-${MAGENTO_VERSION}/2/debian-10")
+                        }
+                    }
+                }
+                stage("Publish Image to Registry") {
+                    steps {
+                        script {
+                            docker.withRegistry("", "dockerio-cred") { //The docker registry username and password are stored in "docker-cred" credential in Jenkins
+                                dockerImage.push()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Protect & Deploy Segment") {
+            agent any
+            stages {
+                stage("Install & Configure Pre-requisites") {
+                    steps {
+                        sh 'curl https://get.helm.sh/helm-v3.7.0-linux-amd64.tar.gz --output helm-v3.7.0-linux-amd64.tar.gz'
+                        sh 'tar -xvzf helm-v3.7.0-linux-amd64.tar.gz'
+                        sh 'cp linux-amd64/helm /usr/bin/helm'
+                        sh 'rm -rf linux-amd64'
+                        sh 'helm repo add bitnami https://charts.bitnami.com/bitnami'
+                        sh 'helm repo update'
+                    }
+                }
+                stage("Download & Configure Astra Toolkit") {
+                    steps {
+                        sh 'wget https://github.com/NetApp/netapp-astra-toolkits/archive/refs/tags/v${ASTRA_TOOLKIT_VERSION}.tar.gz'
+                        sh 'tar -xvzf v${ASTRA_TOOLKIT_VERSION}.tar.gz'
+                        sh 'cp netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/ci_cd_examples/scripts/* netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/'
+                        sh 'chmod +x netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/astra_toolkit_setup.sh'
+                        sh './netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/astra_toolkit_setup.sh -t ${ASTRA_API_TOKEN} -a ${ASTRA_INSTANCE_ID} -f ${ASTRA_FQDN}'
+                        sh 'mv config.yaml netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/config.yaml'
+                    }
+                }
+
+                stage("Backup Tasks") {
+                    parallel {
+                        stage("Backup of Staging Env") {
+                            steps {
+                                dir("netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}") {
+                                    sh 'pip3 install -r requirements.txt --user'
+                                    sh "python3 createBackup.py -c ocp-vmw -a ${STAGING_NAMESPACE} -b upgrade-stag-${MAGENTO_VERSION.replaceAll("\\.", "-")}"
+                                    sh "python3 waitforBackup.py -c ocp-vmw -a ${STAGING_NAMESPACE} -b upgrade-stag-${MAGENTO_VERSION.replaceAll("\\.", "-")}"
+                                }
+                            }
+                        }
+                        stage("Backup of Production Env") {
+                            steps {
+                                dir("netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}") {
+                                    sh 'pip3 install -r requirements.txt --user'
+                                    sh "python3 createBackup.py -c ocp-vmw -a ${PROD_NAMESPACE} -b upgrade-prod-${MAGENTO_VERSION.replaceAll("\\.", "-")}"
+                                    sh "python3 waitforBackup.py -c ocp-vmw -a ${PROD_NAMESPACE} -b upgrade-prod-${MAGENTO_VERSION.replaceAll("\\.", "-")}"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage("Deploy to Staging environment [Minor/Patch]") {
+                    when {
+                        environment name: 'RELEASE_TYPE', value: 'MINOR'
+                    }
+                    steps {
+                        script {
+                            openshift.withCluster('ocp-vmw') {
+                                openshift.raw('patch', 'deployment/magento', '-n', '${STAGING_NAMESPACE}', '-p', "'{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"magento\",\"image\":\"${DOCKER_REGISTRY}/magento:${MAGENTO_VERSION}\"}]}}}}'")
+                            }
+                        }
+                        sleep 5
+                        sh 'oc wait --for=condition=Ready pods --all -n ${STAGING_NAMESPACE} --timeout=20m'
+                    }
+                }
+
+                stage("Deploy to Staging environment [Major]") {
+                    when {
+                        environment name: 'RELEASE_TYPE', value: 'MAJOR'
+                    }
+                    steps {
+                        script {
+                            openshift.withCluster('ocp-vmw') {
+                                sh "helm upgrade magento bitnami/magento --version ${CHART_VERSION} -n ${STAGING_NAMESPACE} --set image.repository=${DOCKER_REGISTRY.replaceAll("docker.io/", "")}/magento,image.tag=${MAGENTO_VERSION},magentoHost=${STAGING_MAGENTO_IP},persistence.magento.accessMode=ReadWriteMany,magentoUsername=${MAGENTO_CREDS_USR},magentoPassword=${MAGENTO_CREDS_PSW},mariadb.db.rootPassword=${MAGENTO_MARIADB_ROOT_CREDS_PSW},mariadb.db.password=${MAGENTO_MARIADB_CREDS_PSW},persistence.magento.accessMode=ReadWriteMany,persistence.apache.accessMode=ReadWriteMany,mariadb.master.persistence.accessModes[0]=ReadWriteMany"
+                            }
+                        }
+                        sleep 5
+                        sh 'oc wait --for=condition=Ready pods --all -n ${STAGING_NAMESPACE} --timeout=20m'
+                    }
+                }
+
+                stage('Promote to Production?') {
+                    steps {
+                        timeout(60) {
+                            script {
+                                input message: 'Approval for promotion to Production?'
+                            }
+                        }
+                    }
+                }
+
+                stage("Deploy to Production environment [Minor/Patch]") {
+                    when {
+                        environment name: 'RELEASE_TYPE', value: 'MINOR'
+                    }
+                    steps {
+                        script {
+                            openshift.withCluster('ocp-vmw') {
+                                openshift.raw('patch', 'deployment/magento', '-n', '${PROD_NAMESPACE}', '-p', "'{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"magento\",\"image\":\"${DOCKER_REGISTRY}/magento:${MAGENTO_VERSION}\"}]}}}}'")
+                            }
+                        }
+                        sleep 5
+                        sh 'oc wait --for=condition=Ready pods --all -n ${PROD_NAMESPACE} --timeout=20m'
+                    }
+                }
+
+                stage("Deploy to Production environment [Major]") {
+                    when {
+                        environment name: 'RELEASE_TYPE', value: 'MAJOR'
+                    }
+                    steps {
+                        script {
+                            openshift.withCluster('ocp-vmw') {
+                                sh "helm upgrade magento bitnami/magento --version ${CHART_VERSION} -n ${PROD_NAMESPACE} --set image.repository=${DOCKER_REGISTRY.replaceAll("docker.io/", "")}/magento,image.tag=${MAGENTO_VERSION},magentoHost=${STAGING_MAGENTO_IP},persistence.magento.accessMode=ReadWriteMany,magentoUsername=${MAGENTO_CREDS_USR},magentoPassword=${MAGENTO_CREDS_PSW},mariadb.db.rootPassword=${MAGENTO_MARIADB_ROOT_CREDS_PSW},mariadb.db.password=${MAGENTO_MARIADB_CREDS_PSW},persistence.magento.accessMode=ReadWriteMany,persistence.apache.accessMode=ReadWriteMany,mariadb.master.persistence.accessModes[0]=ReadWriteMany"
+                            }
+                        }
+                        sleep 5
+                        sh 'oc wait --for=condition=Ready pods --all -n ${PROD_NAMESPACE} --timeout=20m'
+                    }
+                }
+
+                stage("Delete temporary files") {
+                    steps {
+                        sh 'rm -rf netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}'
+                        sh 'rm -rf *.tar.gz'
+                        sh 'rm -rf bitnami-docker-magento-${MAGENTO_VERSION}'
+                    }
+                }
+            }
+        }
+    }
+}

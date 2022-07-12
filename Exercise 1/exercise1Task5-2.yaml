@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-registry
+  namespace: registry
+  labels:
+    app: registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      affinity:
+        nodeAffinity: 
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: 
+                - "kubmas2.demo.netapp.com" #run on master of the 4-node cluster
+      containers:
+      - name: registry
+        image: registry:2.6.2
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: repo-vol
+          mountPath: "/var/lib/registry"
+        - name: certs-vol
+          mountPath: "/certs"
+          readOnly: true
+        - name: auth-vol
+          mountPath: "/auth"
+          readOnly: true
+        env:
+        - name: REGISTRY_AUTH
+          value: "htpasswd"
+        - name: REGISTRY_AUTH_HTPASSWD_REALM
+          value: "Registry Realm"
+        - name: REGISTRY_AUTH_HTPASSWD_PATH
+          value: "/auth/htpasswd"
+        - name: REGISTRY_HTTP_TLS_CERTIFICATE
+          value: "/certs/tls.crt"
+        - name: REGISTRY_HTTP_TLS_KEY
+          value: "/certs/tls.key"
+      volumes:
+      - name: repo-vol
+        hostPath:
+          path: "/acc-registry"
+      - name: certs-vol
+        secret:
+          secretName: certs-secret
+      - name: auth-vol
+        secret:
+          secretName: auth-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docker-registry
+  namespace: registry
+spec:
+  type: NodePort
+  selector:
+    app: registry
+  ports:
+  - port: 5000
+    targetPort: 5000
+    nodePort: 30001

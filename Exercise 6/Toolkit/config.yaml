@@ -1,0 +1,4 @@
+headers:
+  Authorization: Bearer <contents of bearer token>
+uid: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+astra_project: example

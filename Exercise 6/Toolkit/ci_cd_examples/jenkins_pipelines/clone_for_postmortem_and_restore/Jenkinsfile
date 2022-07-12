@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+    environment {
+        MAGENTO_VERSION = '2.4.1-debian-10-r14'
+        ASTRA_TOOLKIT_VERSION = '2.0.2'
+        ASTRA_API_TOKEN = 'xxxxx'
+        ASTRA_INSTANCE_ID = 'xxx-xxx-xxx-xxx-xxx'
+        ASTRA_FQDN = 'netapp-astra-control-center.org.example.com'
+        PROD_APP_NAME = 'magento-prod'
+        DEBUG_APP_NAME = 'magento-debug'
+        DEBUG_NAMESPACE = 'magento-debug'
+        PROD_KUBERNETES_CLUSTER = 'ocp-vmw'
+        DEBUG_KUBERNETES_CLUSTER = 'ocp-vmw'
+    }
+
+    stages{
+        stage("Install & Configure Pre-requisites") {
+            steps {
+                sh 'curl https://get.helm.sh/helm-v3.7.0-linux-amd64.tar.gz --output helm-v3.7.0-linux-amd64.tar.gz'
+                sh 'tar -xvzf helm-v3.7.0-linux-amd64.tar.gz'
+                sh 'cp linux-amd64/helm /usr/bin/helm'
+                sh 'rm -rf linux-amd64'
+                sh 'helm repo add bitnami https://charts.bitnami.com/bitnami'
+                sh 'helm repo update'
+            }
+        }
+
+        stage("Download & Configure Astra Toolkit") {
+            steps {
+                sh 'wget https://github.com/kulkarnn/netapp-astra-toolkits/archive/refs/tags/v${ASTRA_TOOLKIT_VERSION}.tar.gz'
+                sh 'tar -xvzf v${ASTRA_TOOLKIT_VERSION}.tar.gz'
+                sh 'cp netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/ci_cd_examples/scripts/* netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/'
+                sh 'chmod +x netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/astra_toolkit_setup.sh'
+                sh './netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/astra_toolkit_setup.sh -t ${ASTRA_API_TOKEN} -a ${ASTRA_INSTANCE_ID} -f ${ASTRA_FQDN}'
+                sh 'mv config.yaml netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}/config.yaml'
+            }
+        }
+
+        stage("Clone production environment") {
+            steps {
+                dir("netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}") {
+                    sh 'pip3 install -r requirements.txt --user'
+                    sh "python3 cloneApp.py --clone-name ${DEBUG_APP_NAME} --clone-namespace ${DEBUG_NAMESPACE} --source-cluster ${PROD_KUBERNETES_CLUSTER} --destination-cluster ${DEBUG_KUBERNETES_CLUSTER} --source-application ${PROD_APP_NAME}"
+                }
+                script {
+                    openshift.withCluster('ocp-vmw') {
+                        def CLONE_LB_IP = sh (script: "oc get svc magento -n magento-prod | grep LoadBalancer | awk '{print \$4}'", returnStdout: true)
+                        echo "${CLONE_LB_IP}"
+                        sh "helm upgrade --reuse-values magento bitnami/magento --namespace ${DEBUG_NAMESPACE} --wait --timeout 20m --version 14 --set magentoHost=${CLONE_LB_IP}"
+                    }
+                }
+            }
+        }
+
+        stage("Restore production environment") {
+            steps {
+                dir("netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}") {
+                    sh 'pip3 install -r requirements.txt --user'
+                    sh "python3 restoreApp.py --application-name ${PROD_APP_NAME} --use-backup upgrade-stag-${MAGENTO_VERSION.replaceAll("\\.", "-")}"
+                }
+            }
+        }   
+
+        stage("Delete temporary files") {
+            steps {
+                sh 'rm -rf netapp-astra-toolkits-${ASTRA_TOOLKIT_VERSION}'
+                sh 'rm -rf *.tar.gz'
+            }
+        }		
+    }
+}

@@ -1,0 +1,229 @@
+manifest:
+  packageName: Astra Control Center
+  packageVersion: 22.04.0
+  images:
+  - name: acc-operator
+    tag: 22.03.29
+    path: images/acc-operator-22.03.29.tar
+    digest: 'digest: sha256:806965715e718acfb82b118a99ffdd11c5503d57025541bcb59d9ccf2f00712a'
+  - name: enterprise-helm-repo
+    tag: 22.04.0
+    path: images/enterprise-helm-repo-22.04.0.tar
+    digest: 'digest: sha256:d76bc107dd7775c5828d7b9d5c9370ecac7fbb4ec2e15e921cf9e17e7a799347'
+  - name: activity
+    tag: 1.2.26
+    path: images/activity-1.2.26.tar
+    digest: 'digest: sha256:707d85cfb188e9338d6e09595450b33278fb345c8195807f543ec09041974ef6'
+  - name: asup
+    tag: 1.2.13
+    path: images/asup-1.2.13.tar
+    digest: 'digest: sha256:5cc5427044a5ac2634eb954cdcd79966027af4df0c72e6f32d9936f60bfd59fd'
+  - name: cloud-extension
+    tag: 1.2.38
+    path: images/cloud-extension-1.2.38.tar
+    digest: 'digest: sha256:849932bac590667a8613cdc7edff07ffe63d5ec4aa4dcb394fe07f47e0cd653d'
+  - name: storage-provider
+    tag: 1.2.119
+    path: images/storage-provider-1.2.119.tar
+    digest: 'digest: sha256:e9b86dade4e4605a84c258674ad93ce4df201827284488a79ab65ca9a5c2d885'
+  - name: packages
+    tag: 0.0.55
+    path: images/packages-0.0.55.tar
+    digest: 'digest: sha256:c667dd2c9c9e18142d1c9cf862461661fa94340963c49916fb48cf85f96973a8'
+  - name: storage-backend-metrics
+    tag: 1.2.33
+    path: images/storage-backend-metrics-1.2.33.tar
+    digest: 'digest: sha256:b23fc1909f327c723743f923a73ec2ca362ccd76a92330cf89ed2625e5b1722a'
+  - name: composite-compute
+    tag: 1.2.40
+    path: images/composite-compute-1.2.40.tar
+    digest: 'digest: sha256:a61930157c7a4bfd31da7b86b996cc3f42cc35aa10e595d29426934be6e511e0'
+  - name: composite-volume
+    tag: 1.2.19
+    path: images/composite-volume-1.2.19.tar
+    digest: 'digest: sha256:3cd8b1862ebec82eda7753b2521b29e624e76f7368830fff47d8facf6e4764ba'
+  - name: credentials
+    tag: 1.2.45
+    path: images/credentials-1.2.45.tar
+    digest: 'digest: sha256:24404ab8b50fc43067ab674a88bfc7347883cccd0237d03c67f04027f8aaf046'
+  - name: entitlement
+    tag: 1.2.15
+    path: images/entitlement-1.2.15.tar
+    digest: 'digest: sha256:23e1f145f7704bb133f991fe4264f40983bfc0916d98f1462be2e9baa8eece43'
+  - name: graphql-server
+    tag: 1.2.68
+    path: images/graphql-server-1.2.68.tar
+    digest: 'digest: sha256:a7afb255965a75869f08ca4d56f019c4842e20bf346544f12e3a50784c5a1edf'
+  - name: identity
+    tag: 1.2.30
+    path: images/identity-1.2.30.tar
+    digest: 'digest: sha256:543a49dc12604969ff24eec1860ebe9a7e6b4275bd8328650d6872805e19fa13'
+  - name: krakend
+    tag: 1.2.27
+    path: images/krakend-1.2.27.tar
+    digest: 'digest: sha256:dc6f111aa81d967d366fe644c3f4283610dd985718ef74c5ae51f3256663e276'
+  - name: nautilus
+    tag: 1.2.194
+    path: images/nautilus-1.2.194.tar
+    digest: 'digest: sha256:1b5f0582b720acbe4073a014949e3719cf2e044bbe0b42076d1524c0eaeb3e6d'
+  - name: polaris-ui
+    tag: 1.2.269
+    path: images/polaris-ui-1.2.269.tar
+    digest: 'digest: sha256:1a253a6bf720ac491c088da9489c581d4ed3426d7e2a8e815933cdbb785778d5'
+  - name: vault-controller
+    tag: 1.2.7
+    path: images/vault-controller-1.2.7.tar
+    digest: 'digest: sha256:18fe0deff114aefbe59dfa82ed7bc31b2f9dc82e7bb303745ac8957652455530'
+  - name: tenancy
+    tag: 1.2.36
+    path: images/tenancy-1.2.36.tar
+    digest: 'digest: sha256:0b51024653df338f19b3886cfd956b9c1aca770344d7de60db9f01d5273fdaf7'
+  - name: trident-svc
+    tag: 1.2.20
+    path: images/trident-svc-1.2.20.tar
+    digest: 'digest: sha256:ddc9eab7186a55b16fea96fd547415fb9df1e5beea0b97505167d8e2a23aaf4e'
+  - name: license
+    tag: 1.2.32
+    path: images/license-1.2.32.tar
+    digest: 'digest: sha256:d433fadca3fd46b01f7866dc6247c0344eae9e2e887a51107a1f49a062d24515'
+  - name: features
+    tag: 1.2.51
+    path: images/features-1.2.51.tar
+    digest: 'digest: sha256:afce994a7b8f4b95e2a43ad7ad716571a0115bf43dbb0e2200eabc90b5efa1b6'
+  - name: authentication
+    tag: 1.2.6
+    path: images/authentication-1.2.6.tar
+    digest: 'digest: sha256:61050a644746b4aa30f2cdb61ac84af84a2b122ab70d1da96eadc9994e4d08a6'
+  - name: openapi
+    tag: 1.2.9
+    path: images/openapi-1.2.9.tar
+    digest: 'digest: sha256:3727165d3af7704ecdb41913d620e4226450818bb1592972f67d9d81a781315a'
+  - name: login-ui
+    tag: 1.2.8
+    path: images/login-ui-1.2.8.tar
+    digest: 'digest: sha256:502806ed6e84151cb5d90ede1863ad27e83c86b04953e0cc5056acc43f4352f6'
+  - name: bucketservice
+    tag: 1.2.21
+    path: images/bucketservice-1.2.21.tar
+    digest: 'digest: sha256:47a504275ef21b742c26752755521bb2d6b2e7d06bdfdfb617a70ea3fda97f52'
+  - name: public-metrics
+    tag: 1.2.14
+    path: images/public-metrics-1.2.14.tar
+    digest: 'digest: sha256:69607e50bc0e863659e96bb942fe3cd95070ff4e7f5e14c0ebb8c4fa32f46829'
+  - name: api-token-authentication
+    tag: 0.2.13
+    path: images/api-token-authentication-0.2.13.tar
+    digest: 'digest: sha256:38ec6d5df00fb18b76936e610010e8d3ead9ab8b03f36c4312974e80e621e296'
+  - name: cloud-insights-service
+    tag: 1.2.22
+    path: images/cloud-insights-service-1.2.22.tar
+    digest: 'digest: sha256:d9c219a038a39c76596f2dbce172ce1acc2067684a0496b1fe825bf5dcae870b'
+  - name: telemetry-service
+    tag: 1.2.40
+    path: images/telemetry-service-1.2.40.tar
+    digest: 'digest: sha256:c4ab97ddbbe79dcbb9d6746dd1d1a8083e5b4389ac6ce9dd22fe52e3a3f2883f'
+  - name: metrics-facade
+    tag: 0.0.36
+    path: images/metrics-facade-0.0.36.tar
+    digest: 'digest: sha256:f7b007f77563b278d3eec0cc3b7e8e3dca594e0837816cdede15b0dcf4110956'
+  - name: cert-manager-controller
+    tag: v1.7.1
+    path: images/cert-manager-controller-v1.7.1.tar
+    digest: 'digest: sha256:db7725ef729d74e24d51c93f831fa69b22747e67507f6bc2d7c981d16920ff35'
+  - name: cert-manager-webhook
+    tag: v1.7.1
+    path: images/cert-manager-webhook-v1.7.1.tar
+    digest: 'digest: sha256:36736adc2f4b56924e5e3a46cc8f8eaf9b18c3c6aac310b01c200a3f4a6f400c'
+  - name: cert-manager-cainjector
+    tag: v1.7.1
+    path: images/cert-manager-cainjector-v1.7.1.tar
+    digest: 'digest: sha256:623ec0d3153915585e02d06b4f76d28339301499a408ca45b6d3e0cbdc38f105'
+  - name: cert-manager-ctl
+    tag: v1.7.1
+    path: images/cert-manager-ctl-v1.7.1.tar
+    digest: 'digest: sha256:4e60e4ce697f12103aeedd200e8abb0352dfd87fd2f64591da2bd923e7824567'
+  - name: consul
+    tag: 1.11.3
+    path: images/consul-1.11.3.tar
+    digest: 'digest: sha256:47114be35402f3ee194654af7d7c19fcfc85d73e41c83dfc1b09d1968fe1a5ed'
+  - name: influxdb
+    tag: v2.0.4
+    path: images/influxdb-v2.0.4.tar
+    digest: 'digest: sha256:4be70a587e978dadfc2990f7adc13e3194829cf106ac0624c0064e0e93d46b06'
+  - name: kube-rbac-proxy
+    tag: v4.8.0
+    path: images/kube-rbac-proxy-v4.8.0.tar
+    digest: 'digest: sha256:51f3d05994a9394f6456429198e3c2b66f43f1fca74f3213776f59ac36e2aa7e'
+  - name: kube-rbac-proxy
+    tag: v0.8.0
+    path: images/kube-rbac-proxy-v0.8.0.tar
+    digest: 'digest: sha256:ad393d6a4d1b1ccbce65c2a4db6064635a8aac883d9dd66a38e14ce925e93b7f'
+  - name: astra-py-k8s
+    tag: v0.0.6
+    path: images/astra-py-k8s-v0.0.6.tar
+    digest: 'digest: sha256:5e8fb39af74b73bc6535ff7406eb3d7f6e11cb32c1b38f97745ef11672b29e7b'
+  - name: mongodb-exporter
+    tag: 0.11.2-debian-10-r307
+    path: images/mongodb-exporter-0.11.2-debian-10-r307.tar
+    digest: 'digest: sha256:c5b85f5a2cbc14ef7e76aca8dd986269bd496e8115c080fa558e389c87f0d64d'
+  - name: mongodb
+    tag: 4.4.9-debian-10-r21
+    path: images/mongodb-4.4.9-debian-10-r21.tar
+    digest: 'digest: sha256:42307548563d8fbdd96dfc99ec217116b4e4ad12b73dc7785a1665c089d8ff2e'
+  - name: restic
+    tag: 1.0.202201272043
+    path: images/restic-1.0.202201272043.tar
+    digest: 'digest: sha256:823e520cc56d96d8c4fc6e9f544b1465e025fd50d77fa36648f84f8b3a88bf99'
+  - name: nats
+    tag: 2.2.6-alpine3.13
+    path: images/nats-2.2.6-alpine3.13.tar
+    digest: 'digest: sha256:491da5634208d92e0c0a052128e76069f3d086b42582b2a07515f1b2284e1b62'
+  - name: telegraf
+    tag: 1.21.4
+    path: images/telegraf-1.21.4.tar
+    digest: 'digest: sha256:37c094fe86696b7cf134f2f8d080c04bac1a84ddf280a81d07ed693bc391a184'
+  - name: fluent-bit
+    tag: 1.8.12
+    path: images/fluent-bit-1.8.12.tar
+    digest: 'digest: sha256:7f6d694d06273bc5ffac0e5fde4fc0a1851febec6524cf7b523c3940714ef801'
+  - name: loki
+    tag: 2.3.0
+    path: images/loki-2.3.0.tar
+    digest: 'digest: sha256:0d02dc420661d07d5afbd1157ae950824d25f69e9f8cfcb66b20975f46ea439f'
+  - name: kubernetes-event-exporter
+    tag: '0.10'
+    path: images/kubernetes-event-exporter-0.10.tar
+    digest: 'digest: sha256:f1c521219f5d09be5f879c6af427b0acdf2800a3e28a752917f4719047e78610'
+  - name: kube-state-metrics
+    tag: v2.3.0
+    path: images/kube-state-metrics-v2.3.0.tar
+    digest: 'digest: sha256:df2bb3f0d0cdca8319435de2d11ee3852802ca103d3b1a5e8a82499cb3220ddd'
+  - name: au-pod
+    tag: 0.0.3
+    path: images/au-pod-0.0.3.tar
+    digest: 'digest: sha256:f40a5c2681898ace4f019b8ab3eec680f34c870b6ca3df15717ea64d8b74c64f'
+  - name: netapp-monitoring
+    tag: 1.186.0
+    path: images/netapp-monitoring-1.186.0.tar
+    digest: 'digest: sha256:7f0de13a9152cd7a38c251e49c7f7a7e5ee102dd60a39fc3ce2dcaa4f0973893'
+  - name: traefik
+    tag: 2.5.6
+    path: images/traefik-2.5.6.tar
+    digest: 'digest: sha256:2cd4bc25ad14d7c652b17d49804dfb99a9ed702faa006ac2f9bdf72c8716a15d'
+  - name: vault
+    tag: 1.9.2
+    path: images/vault-1.9.2.tar
+    digest: 'digest: sha256:9bb605f7fffed3a5db4aaa27c80eb0c9b5de898356ebf5e66c7897fce56f29f3'
+  files:
+  - path: astra_control_center.yaml
+    identifier: astra
+    mediaType: application/x-yaml
+  - path: astra_control_center_min.yaml
+    identifier: astra_min
+    mediaType: application/x-yaml
+  - path: astra_control_center_operator_deploy.yaml
+    identifier: netapp-acc-operator
+    mediaType: application/x-yaml
+  - path: astra_control_center_operator_deploy_with_validations.yaml
+    identifier: netapp-acc-operator_deploy_with_validations
+    mediaType: application/x-yaml

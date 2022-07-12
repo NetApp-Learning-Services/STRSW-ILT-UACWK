@@ -1,0 +1,76 @@
+#Example REST API calls using the REST CLIENT extension 
+#available from the VScode marketplace
+
+#Global Variables 
+@contentType = application/json
+@baseUrl = https://astra.demo.netapp.com
+@token = change_me
+@defaultAccountId = change_me
+@managedClusterId = change_me
+@defaultStorageClassId = change_me
+@managedAppId = change_me
+@managedAppBackupId = change_me
+
+###Step 2-9 List accounts
+GET {{baseUrl}}/accounts
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-14 List account users with parameters
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/core/v1/users
+ ?include=firstName,lastName,id
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-18 Get managed clusters
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-22 Get the storage classes for a managed cluster
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}/storageClasses
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-27 Update the default storage class for a managed cluster
+PUT {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}
+Accept: {{contentType}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+    "type": "application/astra-managedCluster",
+    "version": "1.0",
+    "defaultStorageClass": "{{defaultStorageClassId}}"
+
+}
+
+###Step 2-33 List unmanaged apps
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
+ ?filter=managedState%20eq%20'unmanaged'
+ &include=name,id,managedState
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-37 List managed apps
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
+ ?filter=managedState%20eq%20'managed'
+ &include=name,id,managedState
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-41 Get the backups for a managed app
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+Accept: {{contentType}}
+Authorization: Bearer {{token}}
+
+###Step 2-45 Create a backup for a managed app
+POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+Accept: {{contentType}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+    "type": "application/astra-appBackup",
+    "version": "1.1"
+}

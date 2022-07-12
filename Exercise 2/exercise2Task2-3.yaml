@@ -1,0 +1,19 @@
+apiVersion: astra.netapp.io/v1
+kind: AstraControlCenter
+metadata:
+  name: astra 
+  namespace: netapp-acc
+spec:
+  accountName: "Demo"
+  astraVersion: "22.04.0"
+  astraAddress: "astra.demo.netapp.com"
+  autoSupport:
+    enrolled: false
+  email: "admin@demo.netapp.com"
+  firstName: "SRE"
+  lastName: "Admin"
+  ingressType: "AccTraefik"  
+  imageRegistry:
+    name: "docker-registry:30001"
+    secret: "reg-cred-secret"
+  storageClass: "nas-basic"

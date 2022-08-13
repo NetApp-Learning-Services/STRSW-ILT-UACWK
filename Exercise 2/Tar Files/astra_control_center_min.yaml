@@ -4,7 +4,7 @@ metadata:
   name: astra 
 spec:
   accountName: "Example"
-  astraVersion: "22.04.0"
+  astraVersion: "22.08.0-20"
   astraAddress: "astra.example.com"
   # astraKubeConfigSecret is set to name of the secret which contains kubeconfig of the ACC cluster
   # secret needs to be created prior to deploying ACC if you want it to be managed by Astra

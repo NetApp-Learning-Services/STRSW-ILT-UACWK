@@ -5,7 +5,7 @@ metadata:
   namespace: netapp-acc
 spec:
   accountName: "Demo"
-  astraVersion: "22.04.0"
+  astraVersion: "22.08.0-20"
   astraAddress: "astra.demo.netapp.com"
   autoSupport:
     enrolled: false
@@ -14,6 +14,6 @@ spec:
   lastName: "Admin"
   ingressType: "AccTraefik"  
   imageRegistry:
-    name: "docker-registry:30001"
+    name: "docker-registry:30001/netapp/astracc/22.08.0-20"
     secret: "reg-cred-secret"
   storageClass: "nas-basic"

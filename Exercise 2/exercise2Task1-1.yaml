@@ -1,4 +1,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
+  labels:
+    app.netapp.io/managed-by: astra.netapp.io
+    control-plane: controller-manager
   name: netapp-acc-operator

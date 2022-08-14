@@ -1,12 +1,11 @@
+# This workflow will build and upload a Docker image when a new tag is pushed
+
 name: Docker Image CI
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'docker image tag'
-        required: true 
-        type: string
+  push:
+    tags:
+      - '*.*.*'
 
 jobs:
 
@@ -17,11 +16,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set tag output
+      id: vars
+      run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+
     - name: Build the Docker image
       env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKERIMAGE_TAG: ${{ inputs.tag }}
+          DOCKERIMAGE_TAG: ${{ steps.vars.outputs.tag }}
       run: |
         docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
         docker build . --file Dockerfile --tag netapp/astra-toolkits:latest --tag netapp/astra-toolkits:$DOCKERIMAGE_TAG
@@ -30,7 +33,7 @@ jobs:
       env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKERIMAGE_TAG: ${{ inputs.tag }}
+          DOCKERIMAGE_TAG: ${{ steps.vars.outputs.tag }}
       run: |
         docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_PASSWORD
         docker push netapp/astra-toolkits:latest

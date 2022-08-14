@@ -3,8 +3,8 @@
 The `deploy` command has the following command syntax:
 
 ```text
-./toolkit.py deploy <chartname> <appname> <namespacename> -f/--values <values.yaml> \
-    --set <value1> --set <value2>
+./toolkit.py deploy <appname> <chartname> -n/--namespace <namespacename> \
+    -f/--values <values.yaml> --set <value1> --set <value2>
 ```
 
 This command will carry out the following operations on your *current kubeconfig context*:
@@ -15,17 +15,17 @@ This command will carry out the following operations on your *current kubeconfig
 1. Creates the \<namespacename\> namespace on the Kubernetes cluster
 1. Sets the kubeconfig context to utilize the \<namespacename\>
 1. Runs a `helm install` command deploying \<chartname\> with the name of \<appname\>
-  1. *Optionally* specify any number of [values files](https://helm.sh/docs/chart_template_guide/values_files/) with `-f`/`--values`
-  1. *Optionally* specify any number of individual [values](https://helm.sh/docs/chart_template_guide/values_files/) with `--set`
-1. Waits for Astra Control to discover the newly deployed \<appname\>
+    1. *Optionally* specify any number of [values files](https://helm.sh/docs/chart_template_guide/values_files/) with `-f`/`--values`
+    1. *Optionally* specify any number of individual [values](https://helm.sh/docs/chart_template_guide/values_files/) with `--set`
+1. Waits for Astra Control to discover the newly deployed \<namespacename\>
 1. Has Astra Control manage the newly discovered \<appname\>
 1. Creates a basic protection policy for the newly managed \<appname\>
 
 Sample output:
 
 ```text
-$ ./toolkit.py deploy cloudbees-core cloudbees-core cloudbees-core \
-    -f values.yaml \
+$ ./toolkit.py deploy cloudbees-core cloudbees/cloudbees-core \
+    -n cloudbees-core -f values.yaml \
     --set OperationsCenter.HostName=cloudbees-core.netapp.com \
     --set ingress-nginx.Enabled=true
 Hang tight while we grab the latest from your chart repositories...
@@ -53,8 +53,8 @@ NOTES:
 
 For more information on running CloudBees Core on Kubernetes, visit:
 https://go.cloudbees.com/docs/cloudbees-core/cloud-admin-guide/
-Waiting for Astra to discover apps............Discovery complete!
-Managing: cloudbees-core.....Success.
+Waiting for Astra to discover the namespace.. Namespace discovered!
+Managing app: cloudbees-core. Success!
 Setting hourly protection policy on 855d7fb2-5a7f-494f-ab0b-aea35344ad86
 Setting daily protection policy on 855d7fb2-5a7f-494f-ab0b-aea35344ad86
 Setting weekly protection policy on 855d7fb2-5a7f-494f-ab0b-aea35344ad86

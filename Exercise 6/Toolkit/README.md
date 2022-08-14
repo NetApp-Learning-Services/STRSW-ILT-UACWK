@@ -22,7 +22,7 @@ To manually run the NetApp Astra Control Toolkit:
 
 * One or more running compute clusters managed by NetApp Astra Control.
 * Required software installed:
-  * Python 3.5+
+  * Python 3.8+
   * Pip 21.1.2+
   * Virtualenv 20.4.7+
   * Git 2.30.2+
@@ -35,7 +35,7 @@ To manually run the NetApp Astra Control Toolkit:
 Launch the prepared Docker image. Docker will automatically download the image if you don't already have it on your system.
 
 ```Shell
-sudo docker run -it netapp/astra-toolkits:2.1.1 /bin/bash
+docker run -it netapp/astra-toolkits:2.2.1 /bin/bash
 ```
 
 NOTE: From this point forward, you will be working in the Docker container you just launched.

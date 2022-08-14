@@ -15,7 +15,12 @@
    limitations under the License.
 """
 
-import astraSDK
+try:
+    from . import astraSDK
+except ImportError:
+    import astraSDK
+
+
 import argparse
 import dns.resolver
 import json
@@ -26,6 +31,8 @@ import tempfile
 import time
 import yaml
 import kubernetes
+import base64
+from datetime import datetime, timedelta
 
 
 def subKeys(subObject, key):
@@ -54,7 +61,7 @@ def userSelect(pickList, keys):
         return False
 
     for counter, item in enumerate(pickList["items"], start=1):
-        outputStr = str(counter) + ":\t\t"
+        outputStr = str(counter) + ":\t"
         for key in keys:
             if item.get(key):
                 outputStr += str(item[key]) + "\t"
@@ -89,6 +96,28 @@ def createHelmStr(flagName, values):
     return returnStr
 
 
+def createHookList(hookArguments):
+    """Create a list of strings to be used for --hookArguments, as nargs="*" can provide
+    a variety of different types of lists of lists depending on how the user ueses it.
+    User Input                    argParse Value                      createHookList Return
+    ----------                    --------------                      ---------------------
+    -a arg1                       [['arg1']]                          ['arg1']
+    -a arg1 arg2                  [['arg1', 'arg2']]                  ['arg1', 'arg2']
+    -a arg1 -a arg2               [['arg1'], ['arg2']]                ['arg1', 'arg2']
+    -a "arg1 s_arg" arg2          [['arg1 s_arg', 'arg2']]            ['arg1 s_arg', 'arg2']
+    -a "arg1 s_arg" arg2 -a arg3  [['arg1 s_arg', 'arg2'], ['arg3']]  ['arg1 s_arg', 'arg2', 'arg3']
+    """
+    returnList = []
+    if hookArguments:
+        for arg in hookArguments:
+            if type(arg) == list:
+                for a in arg:
+                    returnList.append(a)
+            else:
+                returnList.append(arg)
+    return returnList
+
+
 def updateHelm():
     """Check to see if the bitnami helm repo is installed
     If it is, get the name of the repo
@@ -103,9 +132,6 @@ def updateHelm():
     }
     if ret != 1:
         retYaml = yaml.load(ret, Loader=yaml.SafeLoader)
-        # [{'name': 'stable', 'url': 'https://charts.helm.sh/stable'},
-        #  {'name': 'bitnami', 'url': 'https://charts.bitnami.com/bitnami'}
-        # ]
         # Adding support for user-defined repos
         for item in retYaml:
             if item.get("url") not in repos:
@@ -122,11 +148,11 @@ def updateHelm():
 
     run("helm repo update")
     chartsDict = {}
+    chartsDict["items"] = []
     for val in repos.values():
-        charts = run(f"helm -o yaml search repo {val}", captureOutput=True)
-        chartsYaml = yaml.load(charts, Loader=yaml.SafeLoader)
-        for line in chartsYaml:
-            chartsDict[(line.get("name").split("/")[1])] = val
+        charts = run(f"helm -o json search repo {val}", captureOutput=True)
+        for chart in json.loads(charts.decode("utf-8")):
+            chartsDict["items"].append(chart)
     return chartsDict
 
 
@@ -237,29 +263,22 @@ class toolkit:
     def __init__(self):
         self.conf = astraSDK.getConfig().main()
 
-    def deploy(
-        self, chartName, repoName, appName, nameSpace, domain, email, ssl, setValues, fileValues
-    ):
-        """Deploy a helm chart <chartName>, from helm repo <repoName>
-        naming the app <appName> into <nameSpace>"""
+    def deploy(self, chart, appName, namespace, setValues, fileValues, verbose):
+        """Deploy a helm chart <chart>, naming the app <appName> into <namespace>"""
 
         setStr = createHelmStr("set", setValues)
         valueStr = createHelmStr("values", fileValues)
 
-        if chartName == "gitlab":
-            assert domain is not None
-            assert email is not None
-
-        getAppsObj = astraSDK.getApps()
+        nsObj = astraSDK.getNamespaces(verbose=verbose)
         retval = run("kubectl get ns -o json", captureOutput=True)
         retvalJSON = json.loads(retval)
         for item in retvalJSON["items"]:
-            if item["metadata"]["name"] == nameSpace:
-                print(f"Namespace {nameSpace} already exists!")
+            if item["metadata"]["name"] == namespace:
+                print(f"Namespace {namespace} already exists!")
                 sys.exit(24)
-        run(f"kubectl create namespace {nameSpace}")
-        run(f"kubectl config set-context --current --namespace={nameSpace}")
-        if chartName == "gitlab":
+        run(f"kubectl create namespace {namespace}")
+        run(f"kubectl config set-context --current --namespace={namespace}")
+        """if chartName == "gitlab":
             gitalyStorageClass = None
             # Are we running on GKE?
             # If we are running on GKE and installing gitlab, we'll use google persistant disk
@@ -378,9 +397,9 @@ class toolkit:
             }
             stsPatch(gitalyPatch, f"{appName}-gitaly")
 
-        else:
-            run(f"helm install {appName} {repoName}/{chartName}{setStr}{valueStr}")
-        print("Waiting for Astra to discover apps.", end="")
+        else:"""
+        run(f"helm install {appName} {chart}{setStr}{valueStr}")
+        print("Waiting for Astra to discover the namespace.", end="")
         sys.stdout.flush()
 
         appID = ""
@@ -389,26 +408,32 @@ class toolkit:
             time.sleep(3)
             print(".", end="")
             sys.stdout.flush()
-            apps = getAppsObj.main(discovered=True, namespace=nameSpace)
+            namespaces = nsObj.main()
             # Cycle through the apps and see if one matches our new namespace
-            for app in apps["items"]:
-                if app["name"] == nameSpace and app["namespace"] == nameSpace:
-                    print("Discovery complete!")
+            for ns in namespaces["items"]:
+                # Check to make sure our namespace name matches, it's in a discovered state,
+                # and that it's a recently created namespace (less than 10 minutes old)
+                if (
+                    ns["name"] == namespace
+                    and ns["namespaceState"] == "discovered"
+                    and (
+                        datetime.utcnow()
+                        - datetime.strptime(
+                            ns["metadata"]["creationTimestamp"], "%Y-%m-%dT%H:%M:%SZ"
+                        )
+                    )
+                    < timedelta(minutes=10)
+                ):
+                    print(" Namespace discovered!")
                     sys.stdout.flush()
-                    appID = app["id"]
-                    # Spin on managing apps.  Astra Control won't allow switching an
-                    # app that is in the pending state to managed.  So we retry endlessly
-                    # with the assumption that eventually the app will switch from
-                    # pending to running and the manageapp call will succeed.
-                    print(f"Managing: {app['name']}.", end="")
+                    time.sleep(3)
+                    print(f"Managing app: {ns['name']}.", end="")
                     sys.stdout.flush()
-                    rv = astraSDK.manageApp().main(appID)
-                    while not rv:
-                        print(".", end="")
-                        sys.stdout.flush()
-                        time.sleep(3)
-                        rv = astraSDK.manageApp().main(appID)
-                    print("Success.")
+                    rc = astraSDK.manageApp(verbose=verbose).main(
+                        ns["name"], ns["name"], ns["clusterID"]
+                    )
+                    appID = rc["id"]
+                    print(" Success!")
                     sys.stdout.flush()
                     break
 
@@ -443,29 +468,28 @@ class toolkit:
 
     def clone(
         self,
+        cloneAppName,
         clusterID,
-        destNamespace,
-        cloneName,
-        namespaces,
-        sourceAppID,
+        sourceClusterID,
+        appIDstr,
+        cloneNamespace,
         backupID,
+        snapshotID,
+        sourceAppID,
         background,
+        verbose,
     ):
         """Create a clone."""
-        # The REST API for cloning requires the sourceClusterID, we look that
-        # up from the passed in namespaces var.
-        #         appID
+        # Check to see if cluster-level resources are needed to be manually created
         needsIngressclass = False
-        for app in namespaces["items"]:
-            if sourceAppID == app["id"]:
-                sourceClusterID = app["clusterID"]
-                for pod in app["pods"]:
-                    for container in pod["containers"]:
-                        if "cloudbees/cloudbees-cloud-core-oc" in container["image"]:
-                            needsIngressclass = True
-
+        appAssets = astraSDK.getAppAssets(verbose=verbose).main(appIDstr)
+        for asset in appAssets["items"]:
+            if asset["assetName"] == "cjoc" and asset["assetType"] == "Ingress":
+                needsIngressclass = True
         # Clone 'ingressclass' cluster object
         if needsIngressclass and sourceClusterID != clusterID:
+            if not cloneNamespace:
+                cloneNamespace = cloneAppName
             clusters = astraSDK.getClusters().main(hideUnmanaged=True)
             contexts, _ = kubernetes.config.list_kube_config_contexts()
             # Loop through clusters and contexts, find matches and open api_client
@@ -493,13 +517,13 @@ class toolkit:
                 sourceIngress = json.loads(sourceResp.data)
                 del sourceIngress["metadata"]["resourceVersion"]
                 del sourceIngress["metadata"]["creationTimestamp"]
-                sourceIngress["metadata"]["labels"]["app.kubernetes.io/instance"] = destNamespace
+                sourceIngress["metadata"]["labels"]["app.kubernetes.io/instance"] = cloneNamespace
                 sourceIngress["metadata"]["annotations"][
                     "meta.helm.sh/release-name"
-                ] = destNamespace
+                ] = cloneNamespace
                 sourceIngress["metadata"]["annotations"][
                     "meta.helm.sh/release-namespace"
-                ] = destNamespace
+                ] = cloneNamespace
             except:
                 # In the event the sourceCluster no longer exists or isn't in kubeconfig
                 sourceIngress = {
@@ -510,15 +534,15 @@ class toolkit:
                         "generation": 1,
                         "labels": {
                             "app.kubernetes.io/component": "controller",
-                            "app.kubernetes.io/instance": destNamespace,
+                            "app.kubernetes.io/instance": cloneNamespace,
                             "app.kubernetes.io/managed-by": "Helm",
                             "app.kubernetes.io/name": "ingress-nginx",
                             "app.kubernetes.io/version": "1.1.0",
                             "helm.sh/chart": "ingress-nginx-4.0.13",
                         },
                         "annotations": {
-                            "meta.helm.sh/release-name": destNamespace,
-                            "meta.helm.sh/release-namespace": destNamespace,
+                            "meta.helm.sh/release-name": cloneNamespace,
+                            "meta.helm.sh/release-namespace": cloneNamespace,
                         },
                         "managedFields": [
                             {
@@ -562,13 +586,13 @@ class toolkit:
                 if not (body.get("reason") == "AlreadyExists"):
                     raise SystemExit(f"Error: Kubernetes resource creation failed\n{e}")
 
-        cloneRet = astraSDK.cloneApp().main(
-            cloneName,
+        cloneRet = astraSDK.cloneApp(verbose=verbose).main(
+            cloneAppName,
             clusterID,
             sourceClusterID,
-            destNamespace,
+            cloneNamespace=cloneNamespace,
             backupID=backupID,
-            snapshotID=None,
+            snapshotID=snapshotID,
             sourceAppID=sourceAppID,
         )
         if cloneRet:
@@ -580,11 +604,11 @@ class toolkit:
             sys.stdout.flush()
             appID = cloneRet.get("id")
             state = cloneRet.get("state")
-            while state != "running":
+            while state != "ready":
                 apps = astraSDK.getApps().main()
                 for app in apps["items"]:
                     if app["id"] == appID:
-                        if app["state"] == "running":
+                        if app["state"] == "ready":
                             state = app["state"]
                             print("Cloning operation complete.")
                             sys.stdout.flush()
@@ -596,28 +620,25 @@ class toolkit:
             print("Submitting clone failed.")
 
 
-if __name__ == "__main__":
+def main():
     # This is a pretty big hack.  The various functions to populate the lists
     # used for choices() in the options are expensive.  argparse provides no
     # way to know what subcommand was selected prior to parsing the options.
     # By then it's too late to decide which functions to run to populate
     # the various choices the differing options for each subcommand needs.
     # So we just go around argparse's back and introspect sys.argv directly
-    chartsList = []
-    namespacesList = []
-    backupList = []
-    snapshotList = []
-    destclusterList = []
     appList = []
+    backupList = []
+    chartsList = []
     clusterList = []
+    destclusterList = []
+    hookList = []
+    namespaceList = []
+    scriptList = []
+    snapshotList = []
     storageClassList = []
+
     if len(sys.argv) > 1:
-        returnNames = False
-        if "-s" in sys.argv or "--symbolicnames" in sys.argv:
-            returnNames = True
-        # since we support symbolic names we have to guard against
-        # commands like ./toolkit.py -s create backup clone backupname
-        # where the toolkit verbs are also used as object names.
 
         # verbs must manually be kept in sync with the top level subcommands in the argparse
         # section of this code.
@@ -629,6 +650,7 @@ if __name__ == "__main__":
             "get": False,
             "create": False,
             "manage": False,
+            "define": False,
             "destroy": False,
             "unmanage": False,
         }
@@ -677,113 +699,141 @@ if __name__ == "__main__":
                             verbs[verb] = False
                             verbPosition = None
 
-        # It isn't intuitive, however only one key in verbs can be True
+        # Turn off verification to speed things up if true
+        plaidMode = False
+        for counter, item in enumerate(sys.argv):
+            if verbPosition and counter < verbPosition and (item == "-f" or item == "--fast"):
+                plaidMode = True
 
-        if verbs["deploy"]:
-            chartsDict = updateHelm()
-            for k in chartsDict:
-                chartsList.append(k)
+        if not plaidMode:
+            # It isn't intuitive, however only one key in verbs can be True
+            if verbs["deploy"]:
+                chartsDict = updateHelm()
+                for chart in chartsDict["items"]:
+                    chartsList.append(chart["name"])
 
-        elif verbs["clone"]:
-            namespaces = astraSDK.getApps().main(source="namespace", delPods=False)
-            for app in namespaces["items"]:
-                namespacesList.append(app["id"])
-            destCluster = astraSDK.getClusters().main(hideUnmanaged=True)
-            for cluster in destCluster["items"]:
-                destclusterList.append(cluster["id"])
-            backups = astraSDK.getBackups().main()
-            if backups is False:
-                print("astraSDK.getBackups().main() failed")
-                sys.exit(1)
-            elif backups is True:
-                print("No apps found")
-                sys.exit(1)
-            for backup in backups["items"]:
-                backupList.append(backup["id"])
-
-        elif verbs["restore"]:
-            for app in astraSDK.getApps().main()["items"]:
-                appList.append(app["id"])
-
-            # This expression translates to "Is there an arg after the verb we found?"
-            if len(sys.argv) - verbPosition >= 2:
-                # If that arg after the verb "restore" matches an appID then
-                # populate the lists of backups and snapshots for that appID
+            elif verbs["clone"]:
+                apps = astraSDK.getApps().main()
+                for app in apps["items"]:
+                    appList.append(app["id"])
+                destCluster = astraSDK.getClusters().main(hideUnmanaged=True)
+                for cluster in destCluster["items"]:
+                    destclusterList.append(cluster["id"])
                 backups = astraSDK.getBackups().main()
                 for backup in backups["items"]:
-                    if backup["appID"] == sys.argv[verbPosition + 1] or (
-                        len(sys.argv) > verbPosition + 2
-                        and backup["appID"] == sys.argv[verbPosition + 2]
-                    ):
-                        backupList.append(backup["id"])
+                    backupList.append(backup["id"])
                 snapshots = astraSDK.getSnaps().main()
-                for snapshot in snapshots["items"]:
-                    if snapshot["appID"] == sys.argv[verbPosition + 1] or (
-                        len(sys.argv) > verbPosition + 2
-                        and snapshot["appID"] == sys.argv[verbPosition + 2]
-                    ):
-                        snapshotList.append(snapshot["id"])
-        elif (
-            verbs["create"]
-            and len(sys.argv) - verbPosition >= 2
-            and (
-                sys.argv[verbPosition + 1] == "backup"
-                or sys.argv[verbPosition + 1] == "protectionpolicy"
-                or sys.argv[verbPosition + 1] == "snapshot"
-            )
-        ):
-            for app in astraSDK.getApps().main()["items"]:
-                appList.append(app["id"])
+                for snap in snapshots["items"]:
+                    snapshotList.append(snap["id"])
 
-        elif verbs["manage"] and len(sys.argv) - verbPosition >= 2:
-            if sys.argv[verbPosition + 1] == "app":
-                for app in astraSDK.getApps().main(discovered=True)["items"]:
-                    appList.append(app["id"])
-            elif sys.argv[verbPosition + 1] == "cluster":
-                clusterDict = astraSDK.getClusters(quiet=True).main()
-                for cluster in clusterDict["items"]:
-                    if cluster["managedState"] == "unmanaged":
-                        clusterList.append(cluster["id"])
-                storageClassDict = astraSDK.getStorageClasses(quiet=True).main()
-                if isinstance(storageClassDict, bool):
-                    # astraSDK.getStorageClasses(quiet=True).main() returns either True
-                    # or False if it doesn't work, or if there are no clouds or clusters
-                    sys.exit(1)
-                for storageClass in storageClassDict["items"]:
-                    if (
-                        len(sys.argv) - verbPosition >= 3
-                        and sys.argv[verbPosition + 2] in clusterList
-                        and storageClass["clusterID"] != sys.argv[verbPosition + 2]
-                    ):
-                        continue
-                    storageClassList.append(storageClass["id"])
-
-        elif verbs["destroy"] and len(sys.argv) - verbPosition >= 2:
-            if sys.argv[verbPosition + 1] == "backup" and len(sys.argv) - verbPosition >= 3:
+            elif verbs["restore"]:
                 for app in astraSDK.getApps().main()["items"]:
                     appList.append(app["id"])
-                backups = astraSDK.getBackups().main()
-                for backup in backups["items"]:
-                    if backup["appID"] == sys.argv[verbPosition + 2]:
-                        backupList.append(backup["id"])
-            elif sys.argv[verbPosition + 1] == "snapshot" and len(sys.argv) - verbPosition >= 3:
+
+                # This expression translates to "Is there an arg after the verb we found?"
+                if len(sys.argv) - verbPosition >= 2:
+                    # If that arg after the verb "restore" matches an appID then
+                    # populate the lists of backups and snapshots for that appID
+                    backups = astraSDK.getBackups().main()
+                    for backup in backups["items"]:
+                        if backup["appID"] == sys.argv[verbPosition + 1] or (
+                            len(sys.argv) > verbPosition + 2
+                            and backup["appID"] == sys.argv[verbPosition + 2]
+                        ):
+                            backupList.append(backup["id"])
+                    snapshots = astraSDK.getSnaps().main()
+                    for snapshot in snapshots["items"]:
+                        if snapshot["appID"] == sys.argv[verbPosition + 1] or (
+                            len(sys.argv) > verbPosition + 2
+                            and snapshot["appID"] == sys.argv[verbPosition + 2]
+                        ):
+                            snapshotList.append(snapshot["id"])
+            elif (
+                verbs["create"]
+                and len(sys.argv) - verbPosition >= 2
+                and (
+                    sys.argv[verbPosition + 1] == "backup"
+                    or sys.argv[verbPosition + 1] == "hook"
+                    or sys.argv[verbPosition + 1] == "protectionpolicy"
+                    or sys.argv[verbPosition + 1] == "snapshot"
+                )
+            ):
                 for app in astraSDK.getApps().main()["items"]:
                     appList.append(app["id"])
-                snapshots = astraSDK.getSnaps().main()
-                for snapshot in snapshots["items"]:
-                    if snapshot["appID"] == sys.argv[verbPosition + 2]:
-                        snapshotList.append(snapshot["id"])
+                if sys.argv[verbPosition + 1] == "hook":
+                    for script in astraSDK.getScripts().main()["items"]:
+                        scriptList.append(script["id"])
 
-        elif verbs["unmanage"] and len(sys.argv) - verbPosition >= 2:
-            if sys.argv[verbPosition + 1] == "app":
-                for app in astraSDK.getApps().main(discovered=False)["items"]:
+            elif (
+                verbs["list"]
+                and len(sys.argv) - verbPosition >= 2
+                and sys.argv[verbPosition + 1] == "assets"
+            ):
+                for app in astraSDK.getApps().main()["items"]:
                     appList.append(app["id"])
 
-            elif sys.argv[verbPosition + 1] == "cluster":
-                clusterDict = astraSDK.getClusters(quiet=True).main()
-                for cluster in clusterDict["items"]:
-                    if cluster["managedState"] == "managed":
-                        clusterList.append(cluster["id"])
+            elif (verbs["manage"] or verbs["define"]) and len(sys.argv) - verbPosition >= 2:
+                if sys.argv[verbPosition + 1] == "app":
+                    namespaceDict = astraSDK.getNamespaces().main()
+                    for namespace in namespaceDict["items"]:
+                        namespaceList.append(namespace["name"])
+                        clusterList.append(namespace["clusterID"])
+                    clusterList = list(set(clusterList))
+                elif sys.argv[verbPosition + 1] == "cluster":
+                    clusterDict = astraSDK.getClusters(quiet=True).main()
+                    for cluster in clusterDict["items"]:
+                        if cluster["managedState"] == "unmanaged":
+                            clusterList.append(cluster["id"])
+                    storageClassDict = astraSDK.getStorageClasses(quiet=True).main()
+                    if isinstance(storageClassDict, bool):
+                        # astraSDK.getStorageClasses(quiet=True).main() returns either True
+                        # or False if it doesn't work, or if there are no clouds or clusters
+                        sys.exit(1)
+                    for storageClass in storageClassDict["items"]:
+                        if (
+                            len(sys.argv) - verbPosition >= 3
+                            and sys.argv[verbPosition + 2] in clusterList
+                            and storageClass["clusterID"] != sys.argv[verbPosition + 2]
+                        ):
+                            continue
+                        storageClassList.append(storageClass["id"])
+
+            elif verbs["destroy"] and len(sys.argv) - verbPosition >= 2:
+                if sys.argv[verbPosition + 1] == "backup" and len(sys.argv) - verbPosition >= 3:
+                    for app in astraSDK.getApps().main()["items"]:
+                        appList.append(app["id"])
+                    backups = astraSDK.getBackups().main()
+                    for backup in backups["items"]:
+                        if backup["appID"] == sys.argv[verbPosition + 2]:
+                            backupList.append(backup["id"])
+                if sys.argv[verbPosition + 1] == "hook" and len(sys.argv) - verbPosition >= 3:
+                    for app in astraSDK.getApps().main()["items"]:
+                        appList.append(app["id"])
+                    hooks = astraSDK.getHooks().main()
+                    for hook in hooks["items"]:
+                        if hook["appID"] == sys.argv[verbPosition + 2]:
+                            hookList.append(hook["id"])
+                elif sys.argv[verbPosition + 1] == "snapshot" and len(sys.argv) - verbPosition >= 3:
+                    for app in astraSDK.getApps().main()["items"]:
+                        appList.append(app["id"])
+                    snapshots = astraSDK.getSnaps().main()
+                    for snapshot in snapshots["items"]:
+                        if snapshot["appID"] == sys.argv[verbPosition + 2]:
+                            snapshotList.append(snapshot["id"])
+                elif sys.argv[verbPosition + 1] == "script" and len(sys.argv) - verbPosition >= 3:
+                    for script in astraSDK.getScripts().main()["items"]:
+                        scriptList.append(script["id"])
+
+            elif verbs["unmanage"] and len(sys.argv) - verbPosition >= 2:
+                if sys.argv[verbPosition + 1] == "app":
+                    for app in astraSDK.getApps().main()["items"]:
+                        appList.append(app["id"])
+
+                elif sys.argv[verbPosition + 1] == "cluster":
+                    clusterDict = astraSDK.getClusters(quiet=True).main()
+                    for cluster in clusterDict["items"]:
+                        if cluster["managedState"] == "managed":
+                            clusterList.append(cluster["id"])
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -793,16 +843,6 @@ if __name__ == "__main__":
         action="store_true",
         help="print verbose/verbose output",
     )
-    # Note that this is just to integrate with argparse
-    # The actual work done by this flag is done before
-    # the argparse object is instantiated
-    parser.add_argument(
-        "-s",
-        "--symbolicnames",
-        default=False,
-        action="store_true",
-        help="list choices using names not UUIDs",
-    )
     parser.add_argument(
         "-o",
         "--output",
@@ -811,6 +851,14 @@ if __name__ == "__main__":
         help="command output format",
     )
     parser.add_argument("-q", "--quiet", default=False, action="store_true", help="supress output")
+    parser.add_argument(
+        "-f",
+        "--fast",
+        default=False,
+        action="store_true",
+        help="prioritize speed over validation (using this will not validate arguments, which "
+        + "may have unintended consequences)",
+    )
     subparsers = parser.add_subparsers(dest="subcommand", required=True, help="subcommand help")
     #######
     # Top level subcommands
@@ -818,15 +866,15 @@ if __name__ == "__main__":
     #######
     parserDeploy = subparsers.add_parser(
         "deploy",
-        help="deploy a bitnami chart",
+        help="Deploy a helm chart",
     )
     parserClone = subparsers.add_parser(
         "clone",
-        help="clone a namespace to a destination cluster",
+        help="Clone an app",
     )
     parserRestore = subparsers.add_parser(
         "restore",
-        help="restore an app from a backup or snapshot",
+        help="Restore an app from a backup or snapshot",
     )
     parserList = subparsers.add_parser(
         "list",
@@ -839,6 +887,7 @@ if __name__ == "__main__":
     )
     parserManage = subparsers.add_parser(
         "manage",
+        aliases=["define"],
         help="Manage an object",
     )
     parserDestroy = subparsers.add_parser(
@@ -880,6 +929,10 @@ if __name__ == "__main__":
         "apps",
         help="list apps",
     )
+    subparserListAssets = subparserList.add_parser(
+        "assets",
+        help="list app assets",
+    )
     subparserListBackups = subparserList.add_parser(
         "backups",
         help="list backups",
@@ -891,6 +944,15 @@ if __name__ == "__main__":
     subparserListClusters = subparserList.add_parser(
         "clusters",
         help="list clusters",
+    )
+    subparserListHooks = subparserList.add_parser("hooks", help="list hooks (executionHooks)")
+    subparserListNamespaces = subparserList.add_parser(
+        "namespaces",
+        help="list namespaces",
+    )
+    subparserListScripts = subparserList.add_parser(
+        "scripts",
+        help="list scripts (hookSources)",
     )
     subparserListSnapshots = subparserList.add_parser(
         "snapshots",
@@ -907,22 +969,6 @@ if __name__ == "__main__":
     #######
     # list apps args and flags
     #######
-    group = subparserListApps.add_mutually_exclusive_group(required=False)
-    group.add_argument(
-        "-u",
-        "--unmanaged",
-        default=False,
-        action="store_true",
-        help="Show only unmanaged apps",
-    )
-    group.add_argument(
-        "-i",
-        "--ignored",
-        default=False,
-        action="store_true",
-        help="Show ignored apps",
-    )
-    subparserListApps.add_argument("-s", "--source", help="app source")
     subparserListApps.add_argument(
         "-n", "--namespace", default=None, help="Only show apps from this namespace"
     )
@@ -931,6 +977,18 @@ if __name__ == "__main__":
     )
     #######
     # end of list apps args and flags
+    #######
+
+    #######
+    # list assets args and flags
+    #######
+    subparserListAssets.add_argument(
+        "appID",
+        choices=(None if plaidMode else appList),
+        help="The appID from which to display the assets",
+    )
+    #######
+    # end of list assets args and flags
     #######
 
     #######
@@ -973,6 +1031,59 @@ if __name__ == "__main__":
     #######
 
     #######
+    # list hooks args and flags
+    #######
+    subparserListHooks.add_argument(
+        "-a", "--app", default=None, help="Only show execution hooks from this app"
+    )
+    #######
+    # end of list hooks args and flags
+    #######
+
+    #######
+    # list namespaces args and flags
+    #######
+    subparserListNamespaces.add_argument(
+        "-c", "--clusterID", default=None, help="Only show namespaces from this clusterID"
+    )
+    subparserListNamespaces.add_argument(
+        "-f",
+        "--nameFilter",
+        default=None,
+        help="Filter namespaces by this value to minimize output",
+    )
+    subparserListNamespaces.add_argument(
+        "-r",
+        "--showRemoved",
+        default=False,
+        action="store_true",
+        help="Show namespaces in a 'removed' state",
+    )
+    subparserListNamespaces.add_argument(
+        "-m",
+        "--minutes",
+        default=False,
+        type=int,
+        help="Only show namespaces created within the last X minutes",
+    )
+    #######
+    # end of list namespaces args and flags
+    #######
+
+    #######
+    # list scripts args and flags
+    #######
+    subparserListScripts.add_argument(
+        "-s",
+        "--getScriptSource",
+        default=None,
+        help="Provide a script name to view the script source code",
+    )
+    #######
+    # end of list scripts args and flags
+    #######
+
+    #######
     # list snapshots args and flags
     #######
     subparserListSnapshots.add_argument(
@@ -997,9 +1108,17 @@ if __name__ == "__main__":
         "backup",
         help="create backup",
     )
+    subparserCreateHook = subparserCreate.add_parser(
+        "hook",
+        help="create hook (executionHook)",
+    )
     subparserCreateProtectionpolicy = subparserCreate.add_parser(
         "protectionpolicy",
         help="create protectionpolicy",
+    )
+    subparserCreateScript = subparserCreate.add_parser(
+        "script",
+        help="create script (hookSource)",
     )
     subparserCreateSnapshot = subparserCreate.add_parser(
         "snapshot",
@@ -1014,7 +1133,7 @@ if __name__ == "__main__":
     #######
     subparserCreateBackup.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID to backup",
     )
     subparserCreateBackup.add_argument(
@@ -1030,6 +1149,52 @@ if __name__ == "__main__":
     )
     #######
     # end of create backups args and flags
+    #######
+
+    #######
+    # create hooks args and flags
+    #######
+    subparserCreateHook.add_argument(
+        "appID",
+        choices=(None if plaidMode else appList),
+        help="appID to create an execution hook for",
+    )
+    subparserCreateHook.add_argument(
+        "name",
+        help="Name of the execution hook to be created",
+    )
+    subparserCreateHook.add_argument(
+        "scriptID",
+        choices=(None if plaidMode else scriptList),
+        help="scriptID to use for the execution hook",
+    )
+    subparserCreateHook.add_argument(
+        "-o",
+        "--operation",
+        choices=["pre-snapshot", "post-snapshot", "pre-backup", "post-backup", "post-restore"],
+        required=True,
+        type=str.lower,
+        help="The operation type for the execution hook",
+    )
+    subparserCreateHook.add_argument(
+        "-a",
+        "--hookArguments",
+        required=False,
+        default=None,
+        action="append",
+        nargs="*",
+        help="The (optional) arguments for the execution hook script",
+    )
+    subparserCreateHook.add_argument(
+        "-r",
+        "--containerRegex",
+        default=None,
+        # type=ascii,
+        help="The (optional) container image name regex to match "
+        + "(do not specify to match on all images)",
+    )
+    #######
+    # end of create hooks args and flags
     #######
 
     #######
@@ -1076,7 +1241,7 @@ if __name__ == "__main__":
     )
     subparserCreateProtectionpolicy.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID of the application to create protection schecule for",
     )
     #######
@@ -1084,11 +1249,32 @@ if __name__ == "__main__":
     #######
 
     #######
+    # create script args and flags
+    #######
+    subparserCreateScript.add_argument(
+        "name",
+        help="Name of the script",
+    )
+    subparserCreateScript.add_argument(
+        "filePath",
+        help="the local filesystem path to the script",
+    )
+    subparserCreateScript.add_argument(
+        "-d",
+        "--description",
+        default=None,
+        help="The optional description of the script",
+    )
+    #######
+    # end of create script args and flags
+    #######
+
+    #######
     # create snapshot args and flags
     #######
     subparserCreateSnapshot.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID to snapshot",
     )
     subparserCreateSnapshot.add_argument(
@@ -1124,10 +1310,24 @@ if __name__ == "__main__":
     #######
     # manage app args and flags
     #######
+    subparserManageApp.add_argument("appName", help="The logical name of the newly defined app")
     subparserManageApp.add_argument(
-        "appID",
-        choices=appList,
-        help="appID of app to move from discovered to managed",
+        "namespace",
+        choices=(None if plaidMode else namespaceList),
+        help="The namespace to move from undefined (aka unmanaged) to defined (aka managed)",
+    )
+    subparserManageApp.add_argument(
+        "-l",
+        "--labelSelectors",
+        required=False,
+        default=None,
+        help="Optional label selectors to filter resources to be included or excluded from "
+        + "the application definition",
+    )
+    subparserManageApp.add_argument(
+        "clusterID",
+        choices=(None if plaidMode else clusterList),
+        help="The clusterID hosting the newly defined app",
     )
     #######
     # end of manage app args and flags
@@ -1138,12 +1338,12 @@ if __name__ == "__main__":
     #######
     subparserManageCluster.add_argument(
         "clusterID",
-        choices=clusterList,
+        choices=(None if plaidMode else clusterList),
         help="clusterID of the cluster to manage",
     )
     subparserManageCluster.add_argument(
         "storageClassID",
-        choices=storageClassList,
+        choices=(None if plaidMode else storageClassList),
         help="Default storage class ID",
     )
     #######
@@ -1157,6 +1357,14 @@ if __name__ == "__main__":
         "backup",
         help="destroy backup",
     )
+    subparserDestroyHook = subparserDestroy.add_parser(
+        "hook",
+        help="destroy hook (executionHook)",
+    )
+    subparserDestroyScript = subparserDestroy.add_parser(
+        "script",
+        help="destroy script (hookSource)",
+    )
     subparserDestroySnapshot = subparserDestroy.add_parser(
         "snapshot",
         help="destroy snapshot",
@@ -1166,20 +1374,50 @@ if __name__ == "__main__":
     #######
 
     #######
+
+    #######
     # destroy backup args and flags
     #######
     subparserDestroyBackup.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID of app to destroy backups from",
     )
     subparserDestroyBackup.add_argument(
         "backupID",
-        choices=backupList,
+        choices=(None if plaidMode else backupList),
         help="backupID to destroy",
     )
     #######
     # end of destroy backup args and flags
+    #######
+
+    # destroy hook args and flags
+    #######
+    subparserDestroyHook.add_argument(
+        "appID",
+        choices=(None if plaidMode else appList),
+        help="appID of app to destroy hooks from",
+    )
+    subparserDestroyHook.add_argument(
+        "hookID",
+        choices=(None if plaidMode else hookList),
+        help="hookID to destroy",
+    )
+    #######
+    # end of destroy backup args and flags
+    #######
+
+    #######
+    # destroy script args and flags
+    #######
+    subparserDestroyScript.add_argument(
+        "scriptID",
+        choices=(None if plaidMode else scriptList),
+        help="scriptID of script to destroy",
+    )
+    #######
+    # end of destroy script args and flags
     #######
 
     #######
@@ -1187,12 +1425,12 @@ if __name__ == "__main__":
     #######
     subparserDestroySnapshot.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID of app to destroy snapshot from",
     )
     subparserDestroySnapshot.add_argument(
         "snapshotID",
-        choices=snapshotList,
+        choices=(None if plaidMode else snapshotList),
         help="snapshotID to destroy",
     )
     #######
@@ -1219,8 +1457,8 @@ if __name__ == "__main__":
     #######
     subparserUnmanageApp.add_argument(
         "appID",
-        choices=appList,
-        help="appID of app to move from managed to discovered",
+        choices=(None if plaidMode else appList),
+        help="appID of app to move from managed to unmanaged",
     )
     #######
     # end of unmanage app args and flags
@@ -1231,7 +1469,7 @@ if __name__ == "__main__":
     #######
     subparserUnmanageCluster.add_argument(
         "clusterID",
-        choices=clusterList,
+        choices=(None if plaidMode else clusterList),
         help="clusterID of the cluster to unmanage",
     )
     #######
@@ -1242,33 +1480,16 @@ if __name__ == "__main__":
     # deploy args and flags
     #######
     parserDeploy.add_argument(
-        "chart",
-        choices=chartsList,
-        help="chart to deploy",
-    )
-    parserDeploy.add_argument(
         "app",
         help="name of app",
     )
-    parserDeploy.add_argument("namespace", help="Namespace to deploy into (must not already exist)")
     parserDeploy.add_argument(
-        "--domain",
-        "-d",
-        required=False,
-        help="Default domain to pass gitlab deployment",
+        "chart",
+        choices=(None if plaidMode else chartsList),
+        help="chart to deploy",
     )
     parserDeploy.add_argument(
-        "--email",
-        "-e",
-        required=False,
-        help="Email address for self-signed certs (gitlab only)",
-    )
-    parserDeploy.add_argument(
-        "-s",
-        "--ssl",
-        default=True,
-        action="store_false",
-        help="Create self signed SSL certs",
+        "-n", "--namespace", required=True, help="Namespace to deploy into (must not already exist)"
     )
     parserDeploy.add_argument(
         "-f",
@@ -1300,37 +1521,45 @@ if __name__ == "__main__":
         help="Run clone operation in the background",
     )
     parserClone.add_argument(
-        "--sourceNamespace",
-        choices=namespacesList,
+        "--cloneAppName",
         required=False,
         default=None,
-        help="Source namespace to clone",
+        help="Clone app name",
     )
     parserClone.add_argument(
+        "--cloneNamespace",
+        required=False,
+        default=None,
+        help="Clone namespace name (optional, if not specified cloneAppName is used)",
+    )
+    parserClone.add_argument(
+        "--clusterID",
+        choices=(None if plaidMode else destclusterList),
+        required=False,
+        default=None,
+        help="Cluster to clone into (can be same as source)",
+    )
+    group = parserClone.add_mutually_exclusive_group(required=True)
+    group.add_argument(
         "--backupID",
-        choices=backupList,
+        choices=(None if plaidMode else backupList),
         required=False,
         default=None,
         help="Source backup to clone",
     )
-    parserClone.add_argument(
-        "--clusterID",
-        choices=destclusterList,
+    group.add_argument(
+        "--snapshotID",
+        choices=(None if plaidMode else snapshotList),
         required=False,
         default=None,
-        help="Cluster to clone to",
+        help="Source snapshot to restore from",
     )
-    parserClone.add_argument(
-        "--destName",
+    group.add_argument(
+        "--sourceAppID",
+        choices=(None if plaidMode else appList),
         required=False,
         default=None,
-        help="clone name",
-    )
-    parserClone.add_argument(
-        "--destNamespace",
-        required=False,
-        default=None,
-        help="Destination namespace",
+        help="Source app to clone",
     )
     #######
     # end of clone args and flags
@@ -1348,20 +1577,20 @@ if __name__ == "__main__":
     )
     parserRestore.add_argument(
         "appID",
-        choices=appList,
+        choices=(None if plaidMode else appList),
         help="appID to restore",
     )
     group = parserRestore.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--backupID",
-        choices=backupList,
+        choices=(None if plaidMode else backupList),
         required=False,
         default=None,
         help="Source backup to restore from",
     )
     group.add_argument(
         "--snapshotID",
-        choices=snapshotList,
+        choices=(None if plaidMode else snapshotList),
         required=False,
         default=None,
         help="Source snapshot to restore from",
@@ -1403,41 +1632,31 @@ if __name__ == "__main__":
 
     tk = toolkit()
     if args.subcommand == "deploy":
-        if hasattr(args, "domain"):
-            domain = args.domain
-        else:
-            domain = None
-        if hasattr(args, "email"):
-            email = args.email
-        else:
-            email = None
-        if hasattr(args, "ssl"):
-            ssl = args.ssl
-        else:
-            ssl = True
         tk.deploy(
             args.chart,
-            chartsDict[args.chart],
             args.app,
             args.namespace,
-            domain,
-            email,
-            ssl,
             args.set,
             args.values,
+            args.verbose,
         )
     elif args.subcommand == "list" or args.subcommand == "get":
-        if args.objectType == "apps" or args.objectType == "app":
+        if args.objectType == "apps":
             rc = astraSDK.getApps(quiet=args.quiet, verbose=args.verbose, output=args.output).main(
-                discovered=args.unmanaged,
-                source=args.source,
                 namespace=args.namespace,
                 cluster=args.cluster,
-                ignored=args.ignored,
             )
             if rc is False:
                 print("astraSDK.getApps() failed")
                 sys.exit(1)
+            else:
+                sys.exit(0)
+        elif args.objectType == "assets":
+            rc = astraSDK.getAppAssets(
+                quiet=args.quiet, verbose=args.verbose, output=args.output
+            ).main(args.appID)
+            if rc is False:
+                print("astraSDK.getAppAssets() failed")
             else:
                 sys.exit(0)
         elif args.objectType == "backups":
@@ -1463,16 +1682,56 @@ if __name__ == "__main__":
                 quiet=args.quiet, verbose=args.verbose, output=args.output
             ).main(hideManaged=args.hideManaged, hideUnmanaged=args.hideUnmanaged)
             if rc is False:
-                print("astraSDK.getClusters() Failed")
+                print("astraSDK.getClusters() failed")
                 sys.exit(1)
             else:
+                sys.exit(0)
+        elif args.objectType == "hooks":
+            rc = astraSDK.getHooks(quiet=args.quiet, verbose=args.verbose, output=args.output).main(
+                appFilter=args.app
+            )
+            if rc is False:
+                print("astraSDK.getHooks() failed")
+                sys.exit(1)
+            else:
+                sys.exit(0)
+        elif args.objectType == "namespaces":
+            rc = astraSDK.getNamespaces(
+                quiet=args.quiet, verbose=args.verbose, output=args.output
+            ).main(
+                clusterID=args.clusterID,
+                nameFilter=args.nameFilter,
+                showRemoved=args.showRemoved,
+                minuteFilter=args.minutes,
+            )
+            if rc is False:
+                print("astraSDK.getNamespaces() failed")
+                sys.exit(1)
+            else:
+                sys.exit(0)
+        elif args.objectType == "scripts":
+            if args.getScriptSource:
+                args.quiet = True
+                args.output = "json"
+            rc = astraSDK.getScripts(
+                quiet=args.quiet, verbose=args.verbose, output=args.output
+            ).main(scriptSourceName=args.getScriptSource)
+            if rc is False:
+                print("astraSDK.getScripts() failed")
+                sys.exit(1)
+            else:
+                if args.getScriptSource:
+                    if len(rc["items"]) == 0:
+                        print(f"Script of name '{args.getScriptSource}' not found.")
+                    for script in rc["items"]:
+                        print(base64.b64decode(script["source"]).decode("utf-8"))
                 sys.exit(0)
         elif args.objectType == "snapshots":
             rc = astraSDK.getSnaps(quiet=args.quiet, verbose=args.verbose, output=args.output).main(
                 appFilter=args.app
             )
             if rc is False:
-                print("astraSDK.getSnaps() Failed")
+                print("astraSDK.getSnaps() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1481,7 +1740,7 @@ if __name__ == "__main__":
                 quiet=args.quiet, verbose=args.verbose, output=args.output
             ).main()
             if rc is False:
-                print("astraSDK.getStorageClasses() Failed")
+                print("astraSDK.getStorageClasses() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1489,8 +1748,22 @@ if __name__ == "__main__":
         if args.objectType == "backup":
             rc = doProtectionTask(args.objectType, args.appID, args.name, args.background)
             if rc is False:
-                print("doProtectionTask() Failed")
+                print("doProtectionTask() failed")
                 sys.exit(1)
+            else:
+                sys.exit(0)
+        elif args.objectType == "hook":
+            rc = astraSDK.createHook(quiet=args.quiet, verbose=args.verbose).main(
+                args.appID,
+                args.name,
+                args.scriptID,
+                args.operation.split("-")[0],
+                args.operation.split("-")[1],
+                createHookList(args.hookArguments),
+                args.containerRegex,
+            )
+            if rc is False:
+                print("astraSDK.createHook() failed")
             else:
                 sys.exit(0)
         elif args.objectType == "protectionpolicy":
@@ -1505,23 +1778,35 @@ if __name__ == "__main__":
                 args.appID,
             )
             if rc is False:
-                print("astraSDK.createProtectionpolicy() Failed")
+                print("astraSDK.createProtectionpolicy() failed")
                 sys.exit(1)
+            else:
+                sys.exit(0)
+        elif args.objectType == "script":
+            with open(args.filePath, encoding="utf8") as f:
+                encodedStr = base64.b64encode(f.read().rstrip().encode("utf-8")).decode("utf-8")
+            rc = astraSDK.createScript(quiet=args.quiet, verbose=args.verbose).main(
+                name=args.name, source=encodedStr, description=args.description
+            )
+            if rc is False:
+                print("astraSDK.createScript() failed")
             else:
                 sys.exit(0)
         elif args.objectType == "snapshot":
             rc = doProtectionTask(args.objectType, args.appID, args.name, args.background)
             if rc is False:
-                print("doProtectionTask() Failed")
+                print("doProtectionTask() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
 
-    elif args.subcommand == "manage":
+    elif args.subcommand == "manage" or args.subcommand == "define":
         if args.objectType == "app":
-            rc = astraSDK.manageApp(quiet=args.quiet, verbose=args.verbose).main(args.appID)
+            rc = astraSDK.manageApp(quiet=args.quiet, verbose=args.verbose).main(
+                args.appName, args.namespace, args.clusterID, args.labelSelectors
+            )
             if rc is False:
-                print("astraSDK.manageApp() Failed")
+                print("astraSDK.manageApp() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1530,7 +1815,7 @@ if __name__ == "__main__":
                 args.clusterID, args.storageClassID
             )
             if rc is False:
-                print("astraSDK.manageCluster() Failed")
+                print("astraSDK.manageCluster() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1543,6 +1828,20 @@ if __name__ == "__main__":
                 print(f"Backup {args.backupID} destroyed")
             else:
                 print(f"Failed destroying backup: {args.backupID}")
+        if args.objectType == "hook":
+            rc = astraSDK.destroyHook(quiet=args.quiet, verbose=args.verbose).main(
+                args.appID, args.hookID
+            )
+            if rc:
+                print(f"Hook {args.hookID} destroyed")
+            else:
+                print(f"Failed destroying hook: {args.hookID}")
+        elif args.objectType == "script":
+            rc = astraSDK.destroyScript(quiet=args.quiet, verbose=args.verbose).main(args.scriptID)
+            if rc:
+                print(f"Script {args.scriptID} destroyed")
+            else:
+                print(f"Failed destroying script: {args.scriptID}")
         elif args.objectType == "snapshot":
             rc = astraSDK.destroySnapshot(quiet=args.quiet, verbose=args.verbose).main(
                 args.appID, args.snapshotID
@@ -1555,7 +1854,7 @@ if __name__ == "__main__":
         if args.objectType == "app":
             rc = astraSDK.unmanageApp(quiet=args.quiet, verbose=args.verbose).main(args.appID)
             if rc is False:
-                print("astraSDK.unmanageApp() Failed")
+                print("astraSDK.unmanageApp() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1564,7 +1863,7 @@ if __name__ == "__main__":
                 args.clusterID
             )
             if rc is False:
-                print("astraSDK.unmanageCluster() Failed")
+                print("astraSDK.unmanageCluster() failed")
                 sys.exit(1)
             else:
                 sys.exit(0)
@@ -1588,7 +1887,7 @@ if __name__ == "__main__":
                 if state == "restoring":
                     print(".", end="")
                     sys.stdout.flush()
-                elif state == "running":
+                elif state == "ready":
                     print("Success!")
                     break
                 elif state == "failed":
@@ -1600,124 +1899,63 @@ if __name__ == "__main__":
             sys.exit(3)
 
     elif args.subcommand == "clone":
+        if not args.cloneAppName:
+            args.cloneAppName = input("App name for the clone: ")
         if not args.clusterID:
             print("Select destination cluster for the clone")
             print("Index\tClusterID\t\t\t\tclusterName\tclusterPlatform")
             args.clusterID = userSelect(destCluster, ["id", "name", "clusterType"])
-        if not args.destNamespace:
-            args.destNamespace = input(
-                "Namespace for the clone "
-                "(This must not be a namespace that currently exists on the destination cluster): "
-            )
-        if not args.destName:
-            args.destName = input("Name for the clone: ")
-        if not args.sourceNamespace:
-            if not args.backupID:
-                # no source namespace/app or source backup
-                print(
-                    "sourceNamespace and backupID are unspecified, you can pick a"
-                    " sourceNamespace, then select a backup of that sourceNamespace."
-                    " (If a backup of that namespace doesn't exist one"
-                    " will be created.  Or you can specify a backupID to use directly."
-                )
-                while True:
-                    retval = input("sourceNamespace or backupID: ")
-                    if retval.lower().startswith("s"):
-                        retval = "sourceNamespace"
-                        break
-                    elif retval.lower().startswith("b"):
-                        retval = "backupID"
-                        break
-                    else:
-                        print("Enter sourceNamespace or backupID")
-                if retval == "sourceNamespace":
-                    print("Select source namespace to be cloned")
-                    print("Index\tAppID\t\t\t\t\tappName\t\tclusterName\tClusterID")
-                    args.sourceNamespace = userSelect(
-                        namespaces, ["id", "name", "clusterName", "clusterID"]
-                    )
-                    appBackupscooked = {}
-                    appBackupscooked["items"] = []
-                    for backup in backups["items"]:
-                        if (
-                            backup["appID"] == args.sourceNamespace
-                            and backup["state"] == "completed"
-                        ):
-                            appBackupscooked["items"].append(backup)
-                    if len(appBackupscooked["items"]) > 0:
-                        print("Select source backup")
-                        print("Index\tBackupID\t\t\t\tBackupName\t\tTimestamp\t\tAppID")
-                        args.backupID = userSelect(
-                            appBackupscooked, ["id", "name", "metadata/creationTimestamp", "appID"]
-                        )
-                    else:
-                        # Take a backup
-                        print("No backups found, taking backup.")
-                        backupRetval = doProtectionTask(
-                            "backup", args.sourceNamespace, f"toolkit-{args.destName}", False
-                        )
-                        if not backupRetval:
-                            print("Exiting due to backup task failing.")
-                            sys.exit(7)
-                elif retval == "backupID":
-                    # No namespace or backupID was specified on the CLI
-                    # user opted to specify a backupID, from there we
-                    # can work backwards to get the namespace.
-                    appBackupscooked = {}
-                    appBackupscooked["items"] = []
-                    for backup in backups["items"]:
-                        if backup["state"] == "completed":
-                            appBackupscooked["items"].append(backup)
-                    if len(appBackupscooked["items"]) == 0:
-                        print("No backups found.")
-                        sys.exit(6)
-                    print("Index\tBackupID\t\t\t\tBackupName\t\tTimestamp\t\tAppID")
-                    args.backupID = userSelect(
-                        appBackupscooked, ["id", "name", "metadata/creationTimestamp", "appID"]
-                    )
-                    for backup in backups["items"]:
-                        if backup["id"] == args.backupID:
-                            args.sourceNamespace = backup["appID"]
 
-            else:
-                # no source namespace/app but we have a backupID
-                # work backwards to get the appID
+        # Determine sourceClusterID and the appID (appID could be provided by args.sourceAppID,
+        # however if it's not that value will be 'None', and if so it needs to stay 'None' when
+        # a backup or snapshot ID is provided for the app to be cloned from the correctly).
+        sourceClusterID = ""
+        appIDstr = ""
+        # Handle -f/--fast/plaidMode cases
+        if plaidMode:
+            apps = astraSDK.getApps().main()
+        if args.sourceAppID:
+            for app in apps["items"]:
+                if app["id"] == args.sourceAppID:
+                    sourceClusterID = app["clusterID"]
+                    appIDstr = app["id"]
+        elif args.backupID:
+            if plaidMode:
+                backups = astraSDK.getBackups().main()
+            for app in apps["items"]:
                 for backup in backups["items"]:
-                    if backup["id"] == args.backupID:
-                        args.sourceNamespace = backup["appID"]
-                if not args.sourceNamespace:
-                    print("Can't determine appID from backupID")
-                    sys.exit(9)
-        else:
-            # we have a source namespace/app
-            # if we have a backupID we have everything we need
-            if not args.backupID:
-                appBackupscooked = {}
-                appBackupscooked["items"] = []
-                for backup in backups["items"]:
-                    if backup["appID"] == args.sourceNamespace and backup["state"] == "completed":
-                        appBackupscooked["items"].append(backup)
-                if len(appBackupscooked["items"]) > 0:
-                    print("Select source backup")
-                    print("Index\tBackupID\t\t\t\tBackupName\t\tTimestamp\t\tAppID")
-                    args.backupID = userSelect(
-                        appBackupscooked, ["id", "name", "metadata/creationTimestamp", "appID"]
-                    )
-                    print(f"args.backupID: {args.backupID}")
-                else:
-                    # Take a backup
-                    backupRetval = doProtectionTask(
-                        "backup", args.sourceNamespace, f"toolkit-{args.destName}", False
-                    )
-                    if not backupRetval:
-                        print("Exiting due to backup task failing.")
-                        sys.exit(7)
+                    if app["id"] == backup["appID"] and backup["id"] == args.backupID:
+                        sourceClusterID = app["clusterID"]
+                        appIDstr = app["id"]
+        elif args.snapshotID:
+            if plaidMode:
+                snapshots = astraSDK.getSnaps().main()
+            for app in apps["items"]:
+                for snapshot in snapshots["items"]:
+                    if app["id"] == snapshot["appID"] and snapshot["id"] == args.snapshotID:
+                        sourceClusterID = app["clusterID"]
+                        appIDstr = app["id"]
+        # Ensure appIDstr is not equal to "", if so bad values were passed in with plaidMode
+        if appIDstr == "":
+            print(
+                "Error: the corresponding appID was not found in the system, please check "
+                + "your inputs and try again."
+            )
+            sys.exit(1)
+
         tk.clone(
+            args.cloneAppName,
             args.clusterID,
-            args.destNamespace,
-            args.destName,
-            namespaces,
-            sourceAppID=args.sourceNamespace,
+            sourceClusterID,
+            appIDstr,
+            args.cloneNamespace,
             backupID=args.backupID,
+            snapshotID=args.snapshotID,
+            sourceAppID=args.sourceAppID,
             background=args.background,
+            verbose=args.verbose,
         )
+
+
+if __name__ == "__main__":
+    main()

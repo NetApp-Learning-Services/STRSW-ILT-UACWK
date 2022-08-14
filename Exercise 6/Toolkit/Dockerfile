@@ -63,6 +63,7 @@ RUN apk add --update --no-cache python3 && \
     pip3 install tabulate && \
     pip3 install urllib3 && \
     pip3 install kubernetes && \
+    pip3 install actoolkit && \
     pip3 cache purge
 
 # Install gcloud

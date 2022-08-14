@@ -25,6 +25,7 @@ from tabulate import tabulate
 from termcolor import colored
 import requests
 from urllib3 import disable_warnings
+from datetime import datetime, timedelta
 
 
 class getConfig:
@@ -144,13 +145,12 @@ class SDKCommon:
 
 
 class getApps(SDKCommon):
-    """List all apps known to Astra.
+    """List all apps known to Astra.  With App 2.0 API spec in the Aug 2022 release, there's
+    no longer a "discovered" or "ignored" construct with apps.  There's simply managed apps
+    (which is what this class covers), or yet-to-be-managed (referred to as unmanaged) apps,
+    which are handled by the getNamespaces class.
 
-    Note that there is an API endpoint that will just list managedApps.  However
-    it has the same return value as topology/v1/apps when filtering for
-    managedState="managed"
-
-    One thing this class won't do is list all of the managed and unmanaged apps.
+    Therefore this class cannot list all of the managed and unmanaged apps.
     """
 
     def __init__(self, quiet=True, verbose=False, output="json"):
@@ -166,29 +166,16 @@ class getApps(SDKCommon):
 
     def main(
         self,
-        discovered=False,
-        source=None,
         namespace=None,
         cluster=None,
-        ignored=False,
-        delPods=True,
     ):
-        """discovered: True: show unmanaged apps False: show managed apps
-        source: Filter by the app source field.  eg: helm, namespace
-        namespace: Filter by the namespace the app is in
-        cluster: Filter by a specific k8s cluster
-        ignored: True: show ignored apps"""
+        """namespace: Filter by the namespace the app is in
+        cluster: Filter by a specific k8s cluster"""
 
-        endpoint = "topology/v1/apps"
+        endpoint = "k8s/v2/apps"
         params = {}
         url = self.base + endpoint
         data = {}
-
-        # There's no such thing as a managed and ignored app, this prevents always having no results
-        # if we are called with discovered=False,ignored=True
-        # as well as simplifies CLI flags for toolkit.py
-        if ignored:
-            discovered = True
 
         if self.verbose:
             print(colored(f"API URL: {url}", "green"))
@@ -209,88 +196,64 @@ class getApps(SDKCommon):
             """
             self.results = {"items":[
                     {
-                        "appDefnSource":"namespace",
-                        "appLabels":[],
-                        "clusterID":"420a9ab0-1608-4e2e-a5ed-ca5b26a7fe69",
-                        "clusterName":"useast1-cluster",
-                        "clusterType":"gke",
-                        "collectionState":"fullyCollected",
-                        "collectionStateDetails":[],
-                        "collectionStateTransitions":[
+                        "type": "application/astra-app",
+                        "version": "2.0",
+                        "id": "36ba2699-66dc-4ad1-949b-26c1108f42e2",
+                        "name": "wordpress-app",
+                        "namespaceScopedResources": [
                             {
-                                "from":"notCollected",
-                                "to":["partiallyCollected", "fullyCollected"]
-                            },
-                            {
-                                "from":"partiallyCollected",
-                                "to":["fullyCollected"]
-                            },
-                            {
-                                "from":"fullyCollected",
-                                "to":[]
+                                "namespace": "wordpress",
+                                "labelSelectors": []
                             }
                         ],
-                        "id":"d8cf2f17-d8d6-4b9f-aa42-f945d43b9a87",
-                        "managedState":"managed",
-                        "managedStateUnready":[],
-                        "managedTimestamp":"2022-05-12T14:35:36Z",
-                        "metadata":{
-                            "createdBy":"system",
-                            "creationTimestamp":"2022-05-12T14:35:27Z",
-                            "labels":[],
-                            "modificationTimestamp":"2022-05-12T18:47:45Z"
-                        },
-                        "name":"wordpress-ns",
-                        "namespace":"wordpress-ns",
-                        "pods":<OMITTED>,
-                        "protectionState":"protected",
-                        "protectionStateUnready":[],
-                        "state":"running",
-                        "stateUnready":[],
-                        "system":"false",
-                        "type":"application/astra-app",
-                        "version":"1.1"
+                        "state": "ready",
+                        "lastResourceCollectionTimestamp": "2022-07-20T18:19:35Z",
+                        "stateTransitions": [
+                            { "to": ["pending"] },
+                            { "to": ["provisioning"] },
+                            { "from": "pending", "to": ["discovering", "failed"] },
+                            { "from": "discovering", "to": ["ready", "failed"] },
+                            {
+                                "from": "ready",
+                                "to": [ "discovering", "restoring", "unavailable", "failed"]
+                            },
+                            { "from": "unavailable", "to": ["ready", "restoring"] },
+                            { "from": "provisioning", "to": ["discovering", "failed"] },
+                            { "from": "restoring", "to": ["discovering", "failed"] }
+                        ],
+                        "stateDetails": [],
+                        "protectionState": "none",
+                        "protectionStateDetails": [],
+                        "namespaces": [
+                            "wordpress"
+                        ],
+                        "clusterName": "uscentral1-cluster",
+                        "clusterID": "b81bdd8f-c2c7-40eb-a602-4af06d3c6e4d",
+                        "clusterType": "gke",
+                        "metadata": {
+                            "labels": [],
+                            "creationTimestamp": "2022-07-20T18:19:30Z",
+                            "modificationTimestamp": "2022-07-20T18:20:36Z",
+                            "createdBy": "12a5d9dd-851e-4235-af27-86c0b63bf3a9"
+                        }
                     }],
                 "metadata":{}
             }
             """
 
-            if discovered:
-                managedFilter = "unmanaged"
-            else:
-                managedFilter = "managed"
-
             # Loop through all apps and delete those that don't match filters
             for counter, app in enumerate(apps.get("items")):
 
-                # Find ignored apps based on labels
-                ignoreFound = False
-                for label in app["metadata"]["labels"]:
-                    if (
-                        label["name"] == "astra.netapp.io/labels/app.ignore"
-                        and label["value"] == "true"
-                    ):
-                        ignoreFound = True
-
                 # If there's a given filter, delete non-matching values
-                if app["system"] == "true":
-                    appsCooked["items"].remove(apps["items"][counter])
-                elif (ignored and not ignoreFound) or (not ignored and ignoreFound):
-                    appsCooked["items"].remove(apps["items"][counter])
-                elif managedFilter != app["managedState"]:
-                    appsCooked["items"].remove(apps["items"][counter])
-                elif source and source != app["appDefnSource"]:
-                    appsCooked["items"].remove(apps["items"][counter])
-                elif namespace and namespace != app["namespace"]:
-                    appsCooked["items"].remove(apps["items"][counter])
+                if namespace:
+                    delApp = True
+                    for ns in app["namespaces"]:
+                        if ns == namespace:
+                            delApp = False
+                    if delApp:
+                        appsCooked["items"].remove(apps["items"][counter])
                 elif cluster and cluster != app["clusterName"]:
                     appsCooked["items"].remove(apps["items"][counter])
-
-            # At this time, pods just seem to muddy the waters with too much info, so delete
-            if delPods:
-                for app in appsCooked.get("items"):
-                    if app.get("pods"):
-                        del app["pods"]
 
             if self.output == "json":
                 dataReturn = appsCooked
@@ -303,7 +266,6 @@ class getApps(SDKCommon):
                     "clusterName",
                     "namespace",
                     "state",
-                    "source",
                 ]
                 tabData = []
                 for app in appsCooked.get("items"):
@@ -312,9 +274,8 @@ class getApps(SDKCommon):
                             app["name"],
                             app["id"],
                             app["clusterName"],
-                            app["namespace"],
+                            ", ".join(app["namespaces"]),
                             app["state"],
-                            app["appDefnSource"],
                         ]
                     )
                 dataReturn = tabulate(tabData, tabHeader, tablefmt="grid")
@@ -379,7 +340,7 @@ class getBackups(SDKCommon):
             if appFilter:
                 if app["name"] != appFilter and app["id"] != appFilter:
                     continue
-            endpoint = f"k8s/v1/managedApps/{app['id']}/appBackups"
+            endpoint = f"k8s/v1/apps/{app['id']}/appBackups"
             url = self.base + endpoint
 
             data = {}
@@ -477,12 +438,12 @@ class takeBackup(SDKCommon):
 
     def main(self, appID, backupName):
 
-        endpoint = f"k8s/v1/managedApps/{appID}/appBackups"
+        endpoint = f"k8s/v1/apps/{appID}/appBackups"
         url = self.base + endpoint
         params = {}
         data = {
             "type": "application/astra-appBackup",
-            "version": "1.0",
+            "version": "1.1",
             "name": backupName,
         }
 
@@ -528,12 +489,12 @@ class destroyBackup(SDKCommon):
 
     def main(self, appID, backupID):
 
-        endpoint = f"k8s/v1/managedApps/{appID}/appBackups/{backupID}"
+        endpoint = f"k8s/v1/apps/{appID}/appBackups/{backupID}"
         url = self.base + endpoint
         params = {}
         data = {
             "type": "application/astra-appBackup",
-            "version": "1.0",
+            "version": "1.1",
         }
 
         if self.verbose:
@@ -561,17 +522,11 @@ class destroyBackup(SDKCommon):
 
 
 class cloneApp(SDKCommon):
-    """Clone a backup into a new app, in a new namespace.  Note that Astra doesn't
-    currently support in place restores.
+    """Clone an app to a new app and namespace.
 
     Either backupID, snapshotID, or sourceAppID is required.
 
-    The sourceClusterID is something you'd think would be optional, but it
-    is required as well.  Even worse, Astra knows what the (only) correct answer
-    is and requires you to provide it anyways.
-
-    Namespace is the new namespace that Astra will create to put the new app into.
-    It must not exist on the destination cluster or the clone will fail.
+    The sourceClusterID is required as well.
 
     clusterID identifies the cluster for the new clone.  It's perfectly legal to
     clone an app to the same cluster it is running on; in which case clusterID ==
@@ -587,31 +542,30 @@ class cloneApp(SDKCommon):
         self.quiet = quiet
         self.verbose = verbose
         super().__init__()
-        self.headers["accept"] = "application/astra-managedApp+json"
-        self.headers["Content-Type"] = "application/astra-managedApp+json"
+        self.headers["accept"] = "application/astra-app+json"
+        self.headers["Content-Type"] = "application/astra-app+json"
 
     def main(
         self,
         cloneName,
         clusterID,
         sourceClusterID,
-        namespace,
+        cloneNamespace=None,
         backupID=None,
         snapshotID=None,
         sourceAppID=None,
     ):
         assert backupID or snapshotID or sourceAppID
 
-        endpoint = "k8s/v1/managedApps"
+        endpoint = "k8s/v2/apps"
         url = self.base + endpoint
         params = {}
         data = {
-            "type": "application/astra-managedApp",
-            "version": "1.0",
+            "type": "application/astra-app",
+            "version": "2.0",
             "name": cloneName,
             "clusterID": clusterID,
             "sourceClusterID": sourceClusterID,
-            "namespace": namespace,
         }
         if sourceAppID:
             data["sourceAppID"] = sourceAppID
@@ -619,6 +573,8 @@ class cloneApp(SDKCommon):
             data["backupID"] = backupID
         if snapshotID:
             data["snapshotID"] = snapshotID
+        if cloneNamespace:
+            data["namespaceScopedResources"] = [{"namespace": cloneNamespace, "labelSelectors": []}]
 
         if self.verbose:
             print("Cloning app")
@@ -667,8 +623,8 @@ class restoreApp(SDKCommon):
         self.quiet = quiet
         self.verbose = verbose
         super().__init__()
-        self.headers["accept"] = "application/astra-managedApp+json"
-        self.headers["Content-Type"] = "application/astra-managedApp+json"
+        self.headers["accept"] = "application/astra-app+json"
+        self.headers["Content-Type"] = "application/astra-app+json"
         self.headers["ForceUpdate"] = "true"
 
     def main(
@@ -679,12 +635,12 @@ class restoreApp(SDKCommon):
     ):
         assert backupID or snapshotID
 
-        endpoint = f"k8s/v1/managedApps/{appID}"
+        endpoint = f"k8s/v2/apps/{appID}"
         url = self.base + endpoint
         params = {}
         data = {
-            "type": "application/astra-managedApp",
-            "version": "1.2",
+            "type": "application/astra-app",
+            "version": "2.0",
         }
         if backupID:
             data["backupID"] = backupID
@@ -748,7 +704,7 @@ class getClusters(SDKCommon):
             if self.verbose:
                 print(f"Getting clusters in cloud {cloud['id']} ({cloud['name']})...")
                 print(colored(f"API URL: {url}", "green"))
-                print(colored("API Method: POST", "green"))
+                print(colored("API Method: GET", "green"))
                 print(colored(f"API Headers: {self.headers}", "green"))
                 print(colored(f"API data: {data}", "green"))
                 print(colored(f"API params: {params}", "green"))
@@ -824,12 +780,12 @@ class createProtectionpolicy(SDKCommon):
         appID,
     ):
 
-        endpoint = f"k8s/v1/managedApps/{appID}/schedules"
+        endpoint = f"k8s/v1/apps/{appID}/schedules"
         url = self.base + endpoint
         params = {}
         data = {
             "type": "application/astra-schedule",
-            "version": "1.0",
+            "version": "1.2",
             "backupRetention": backupRetention,
             "dayOfMonth": dayOfMonth,
             "dayOfWeek": dayOfWeek,
@@ -859,7 +815,7 @@ class createProtectionpolicy(SDKCommon):
             results = super().jsonifyResults(ret)
             if not self.quiet:
                 print(json.dumps(results))
-            return True
+            return results
         else:
             if not self.quiet:
                 print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
@@ -869,7 +825,7 @@ class createProtectionpolicy(SDKCommon):
 
 
 class manageApp(SDKCommon):
-    """This class switches a discovered app to a managed app."""
+    """This class switches an unmanaged (aka undefined) app to a managed (aka defined) app."""
 
     def __init__(self, quiet=True, verbose=False):
         """quiet: Will there be CLI output or just return (datastructure)
@@ -877,22 +833,26 @@ class manageApp(SDKCommon):
         self.quiet = quiet
         self.verbose = verbose
         super().__init__()
-        self.headers["accept"] = "application/astra-managedApp+json"
-        self.headers["Content-Type"] = "application/managedApp+json"
+        self.headers["accept"] = "application/astra-app+json"
+        self.headers["Content-Type"] = "application/astra-app+json"
 
-    def main(self, appID):
+    def main(self, appName, namespace, clusterID, label=None):
 
-        endpoint = "k8s/v1/managedApps"
+        endpoint = "k8s/v2/apps"
         url = self.base + endpoint
         params = {}
         data = {
-            "type": "application/astra-managedApp",
-            "version": "1.1",
-            "id": appID,
+            "clusterID": clusterID,
+            "name": appName,
+            "namespaceScopedResources": [{"namespace": namespace}],
+            "type": "application/astra-app",
+            "version": "2.0",
         }
+        if label:
+            data["namespaceScopedResources"][0]["labelSelectors"] = [label]
 
         if self.verbose:
-            print(f"Managing app: {appID}")
+            print(f"Managing app: {appName}")
             print(colored(f"API URL: {url}", "green"))
             print(colored("API Method: POST", "green"))
             print(colored(f"API Headers: {self.headers}", "green"))
@@ -909,7 +869,7 @@ class manageApp(SDKCommon):
             results = super().jsonifyResults(ret)
             if not self.quiet:
                 print(json.dumps(results))
-            return True
+            return results
         else:
             if not self.quiet:
                 print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
@@ -927,12 +887,12 @@ class unmanageApp(SDKCommon):
         self.quiet = quiet
         self.verbose = verbose
         super().__init__()
-        self.headers["accept"] = "application/astra-managedApp+json"
-        self.headers["Content-Type"] = "application/managedApp+json"
+        self.headers["accept"] = "application/astra-app+json"
+        self.headers["Content-Type"] = "application/astra-app+json"
 
     def main(self, appID):
 
-        endpoint = f"k8s/v1/managedApps/{appID}"
+        endpoint = f"k8s/v2/apps/{appID}"
         url = self.base + endpoint
         params = {}
         data = {}
@@ -979,12 +939,12 @@ class takeSnap(SDKCommon):
 
     def main(self, appID, snapName):
 
-        endpoint = f"k8s/v1/managedApps/{appID}/appSnaps"
+        endpoint = f"k8s/v1/apps/{appID}/appSnaps"
         url = self.base + endpoint
         params = {}
         data = {
             "type": "application/astra-appSnap",
-            "version": "1.0",
+            "version": "1.1",
             "name": snapName,
         }
 
@@ -1049,7 +1009,7 @@ class getSnaps(SDKCommon):
             if appFilter:
                 if app["name"] != appFilter and app["id"] != appFilter:
                     continue
-            endpoint = f"k8s/v1/managedApps/{app['id']}/appSnaps"
+            endpoint = f"k8s/v1/apps/{app['id']}/appSnaps"
             url = self.base + endpoint
 
             data = {}
@@ -1135,12 +1095,12 @@ class destroySnapshot(SDKCommon):
 
     def main(self, appID, snapID):
 
-        endpoint = f"k8s/v1/managedApps/{appID}/appSnaps/{snapID}"
+        endpoint = f"k8s/v1/apps/{appID}/appSnaps/{snapID}"
         url = self.base + endpoint
         params = {}
         data = {
             "type": "application/astra-appSnap",
-            "version": "1.0",
+            "version": "1.1",
         }
 
         if self.verbose:
@@ -1190,7 +1150,7 @@ class getClouds(SDKCommon):
         if self.verbose:
             print("Getting clouds...")
             print(colored(f"API URL: {url}", "green"))
-            print(colored("API Method: POST", "green"))
+            print(colored("API Method: GET", "green"))
             print(colored(f"API Headers: {self.headers}", "green"))
             print(colored(f"API data: {data}", "green"))
             print(colored(f"API params: {params}", "green"))
@@ -1377,7 +1337,7 @@ class manageCluster(SDKCommon):
             results = super().jsonifyResults(ret)
             if not self.quiet:
                 print(json.dumps(results))
-            return True
+            return results
         else:
             if not self.quiet:
                 print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
@@ -1425,6 +1385,578 @@ class unmanageCluster(SDKCommon):
         if ret.ok:
             if not self.quiet:
                 print("Cluster unmanaged")
+            return True
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class getNamespaces(SDKCommon):
+    def __init__(self, quiet=True, verbose=False, output="json"):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body
+        output: table: pretty print the data
+                json: (default) output in JSON
+                yaml: output in yaml"""
+        self.quiet = quiet
+        self.verbose = verbose
+        self.output = output
+        super().__init__()
+        self.apps = getApps().main()
+        self.clusters = getClusters().main()
+
+    def main(self, clusterID=None, nameFilter=None, showRemoved=False, minuteFilter=False):
+        if self.apps is False:
+            print("Call to getApps().main() failed")
+            return False
+
+        if clusterID:
+            endpoint = f"topology/v1/clusters/{clusterID}/namespaces"
+        else:
+            endpoint = "topology/v1/namespaces"
+        url = self.base + endpoint
+
+        data = {}
+        params = {}
+
+        if self.verbose:
+            print("Getting namespaces...")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: GET", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("get", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            systemNS = ["kube-node-lease", "kube-public", "kube-system", "trident"]
+            namespaces = super().jsonifyResults(ret)
+            # Add in a custom key/value "associatedApps"
+            for ns in namespaces["items"]:
+                ns["associatedApps"] = []
+                for app in self.apps["items"]:
+                    if ns["clusterID"] == app["clusterID"]:
+                        for nsr in app["namespaceScopedResources"]:
+                            if ns["name"] == nsr["namespace"]:
+                                ns["associatedApps"].append(app["name"])
+            # Delete the unneeded namespaces based on filters
+            namespacesCooked = copy.deepcopy(namespaces)
+            clusterList = []
+            for cluster in self.clusters["items"]:
+                if cluster["managedState"] == "managed":
+                    clusterList.append(cluster["id"])
+            for counter, namespace in enumerate(namespaces.get("items")):
+                if namespace.get("systemType") or namespace.get("name") in systemNS:
+                    namespacesCooked["items"].remove(namespaces["items"][counter])
+                elif nameFilter and nameFilter not in namespace.get("name"):
+                    namespacesCooked["items"].remove(namespaces["items"][counter])
+                elif not showRemoved and namespace.get("namespaceState") == "removed":
+                    namespacesCooked["items"].remove(namespaces["items"][counter])
+                elif namespace["clusterID"] not in clusterList:
+                    namespacesCooked["items"].remove(namespaces["items"][counter])
+                elif minuteFilter and (
+                    datetime.utcnow()
+                    - datetime.strptime(
+                        namespace.get("metadata").get("creationTimestamp"), "%Y-%m-%dT%H:%M:%SZ"
+                    )
+                    > timedelta(minutes=minuteFilter)
+                ):
+                    namespacesCooked["items"].remove(namespaces["items"][counter])
+
+            if self.output == "json":
+                dataReturn = namespacesCooked
+            elif self.output == "yaml":
+                dataReturn = yaml.dump(namespacesCooked)
+            elif self.output == "table":
+                tabHeader = ["name", "namespaceID", "namespaceState", "associatedApps", "clusterID"]
+                tabData = []
+                for namespace in namespacesCooked["items"]:
+                    tabData.append(
+                        [
+                            namespace["name"],
+                            namespace["id"],
+                            namespace["namespaceState"],
+                            ", ".join(namespace["associatedApps"]),
+                            namespace["clusterID"],
+                        ]
+                    )
+                dataReturn = tabulate(tabData, tabHeader, tablefmt="grid")
+            if not self.quiet:
+                print(json.dumps(dataReturn) if type(dataReturn) is dict else dataReturn)
+            return dataReturn
+
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class getScripts(SDKCommon):
+    """Get all the scripts (aka hook sources) for the Astra Control account"""
+
+    def __init__(self, quiet=True, verbose=False, output="json"):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body
+        output: table: pretty print the data
+                json: (default) output in JSON
+                yaml: output in yaml"""
+        self.quiet = quiet
+        self.verbose = verbose
+        self.output = output
+        super().__init__()
+
+    def main(self, scriptSourceName=None):
+
+        endpoint = "core/v1/hookSources"
+        url = self.base + endpoint
+
+        data = {}
+        params = {}
+
+        if self.verbose:
+            print("Getting scripts...")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: GET", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("get", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            scripts = super().jsonifyResults(ret)
+            scriptsCooked = copy.deepcopy(scripts)
+            if scriptSourceName:
+                for counter, script in enumerate(scripts.get("items")):
+                    if script.get("name") != scriptSourceName:
+                        scriptsCooked["items"].remove(scripts["items"][counter])
+
+            if self.output == "json":
+                dataReturn = scriptsCooked
+            elif self.output == "yaml":
+                dataReturn = yaml.dump(scriptsCooked)
+            elif self.output == "table":
+                tabHeader = ["scriptName", "scriptID", "description"]
+                tabData = []
+                for script in scriptsCooked["items"]:
+                    tabData.append(
+                        [
+                            script["name"],
+                            script["id"],
+                            script.get("description"),
+                        ]
+                    )
+                dataReturn = tabulate(tabData, tabHeader, tablefmt="grid")
+            if not self.quiet:
+                print(json.dumps(dataReturn) if type(dataReturn) is dict else dataReturn)
+            return dataReturn
+
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class createScript(SDKCommon):
+    """Create a script (aka hook source)"""
+
+    def __init__(self, quiet=True, verbose=False):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body"""
+        self.quiet = quiet
+        self.verbose = verbose
+        super().__init__()
+        self.headers["accept"] = "application/astra-hookSource+json"
+        self.headers["Content-Type"] = "application/astra-hookSource+json"
+
+    def main(
+        self,
+        name,
+        source,
+        description=None,
+    ):
+
+        endpoint = f"core/v1/hookSources"
+        url = self.base + endpoint
+        params = {}
+        data = {
+            "type": "application/astra-hookSource",
+            "version": "1.0",
+            "name": name,
+            "source": source,
+            "sourceType": "script",
+        }
+        if description:
+            data["description"] = description
+
+        if self.verbose:
+            print(f"Creating script {name}")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: POST", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("post", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            results = super().jsonifyResults(ret)
+            if not self.quiet:
+                print(json.dumps(results))
+            return results
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class destroyScript(SDKCommon):
+    """Given a scriptID destroy the script.  Note that this doesn't unmanage
+    a script, it actively destroys it. There is no coming back from this."""
+
+    def __init__(self, quiet=True, verbose=False):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body"""
+        self.quiet = quiet
+        self.verbose = verbose
+        super().__init__()
+        self.headers["accept"] = "application/astra-hookSource+json"
+        self.headers["Content-Type"] = "application/astra-hookSource+json"
+
+    def main(self, scriptID):
+
+        endpoint = f"core/v1/hookSources/{scriptID}"
+        url = self.base + endpoint
+        params = {}
+        data = {
+            "type": "application/astra-hookSource",
+            "version": "1.0",
+        }
+
+        if self.verbose:
+            print(f"Deleting scriptID {scriptID}")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: DELETE", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("delete", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            return True
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class getAppAssets(SDKCommon):
+    def __init__(self, quiet=True, verbose=False, output="json"):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body
+        output: table: pretty print the data
+                json: (default) output in JSON
+                yaml: output in yaml"""
+        self.quiet = quiet
+        self.verbose = verbose
+        self.output = output
+        super().__init__()
+
+    def main(self, appID):
+
+        endpoint = f"k8s/v1/apps/{appID}/appAssets"
+        url = self.base + endpoint
+
+        data = {}
+        params = {}
+
+        if self.verbose:
+            print("Getting app assets...")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: GET", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("get", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            assets = super().jsonifyResults(ret)
+
+            if self.output == "json":
+                dataReturn = assets
+            elif self.output == "yaml":
+                dataReturn = yaml.dump(assets)
+            elif self.output == "table":
+                tabHeader = ["assetName", "assetType"]
+                tabData = []
+                for asset in assets["items"]:
+                    tabData.append(
+                        [
+                            asset.get("assetName"),
+                            asset.get("assetType"),
+                        ]
+                    )
+                dataReturn = tabulate(tabData, tabHeader, tablefmt="grid")
+            if not self.quiet:
+                print(json.dumps(dataReturn) if type(dataReturn) is dict else dataReturn)
+            return dataReturn
+
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class getHooks(SDKCommon):
+    """Get all the execution hooks for every app"""
+
+    def __init__(self, quiet=True, verbose=False, output="json"):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body
+        output: table: pretty print the data
+                json: (default) output in JSON
+                yaml: output in yaml"""
+        self.quiet = quiet
+        self.verbose = verbose
+        self.output = output
+        super().__init__()
+        self.apps = getApps().main()
+
+    def main(self, appFilter=None):
+        if self.apps is False:
+            print("Call to getApps() failed")
+            return False
+
+        hooks = {}
+        hooks["items"] = []
+        if self.output == "table":
+            globaltabHeader = ["appID", "hookName", "hookID", "matchingImages"]
+            globaltabData = []
+
+        for app in self.apps["items"]:
+            if appFilter:
+                if app["name"] != appFilter and app["id"] != appFilter:
+                    continue
+            endpoint = f"k8s/v1/apps/{app['id']}/executionHooks"
+            url = self.base + endpoint
+
+            data = {}
+            params = {}
+
+            if self.verbose:
+                print("Getting execution hooks...")
+                print(colored(f"API URL: {url}", "green"))
+                print(colored("API Method: GET", "green"))
+                print(colored(f"API Headers: {self.headers}", "green"))
+                print(colored(f"API data: {data}", "green"))
+                print(colored(f"API params: {params}", "green"))
+
+            ret = super().apicall("get", url, data, self.headers, params, self.verifySSL)
+
+            if self.verbose:
+                print(f"API HTTP Status Code: {ret.status_code}")
+                print()
+
+            if ret.ok:
+                results = super().jsonifyResults(ret)
+                if results is None:
+                    continue
+                for item in results["items"]:
+                    hooks["items"].append(item)
+                if self.output == "table":
+                    tabHeader = ["hookName", "hookID", "matchingImages"]
+                    tabData = []
+                    for hook in results["items"]:
+                        tabData.append(
+                            [
+                                hook["name"],
+                                hook["id"],
+                                ", ".join(hook["matchingImages"]),
+                            ]
+                        )
+                        globaltabData.append(
+                            [
+                                app["id"],
+                                hook["name"],
+                                hook["id"],
+                                ", ".join(hook["matchingImages"]),
+                            ]
+                        )
+                if not self.quiet and self.verbose:
+                    print(f"Execution hooks for {app['id']}")
+                    if self.output == "json":
+                        print(json.dumps(results))
+                    elif self.output == "yaml":
+                        print(yaml.dump(results))
+                    elif self.output == "table":
+                        print(tabulate(tabData, tabHeader, tablefmt="grid"))
+                        print()
+            else:
+                if not self.quiet:
+                    print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                    if ret.text.strip():
+                        print(f"Error text: {ret.text}")
+                continue
+        if self.output == "json":
+            dataReturn = hooks
+        elif self.output == "yaml":
+            dataReturn = yaml.dump(hooks)
+        elif self.output == "table":
+            dataReturn = tabulate(globaltabData, globaltabHeader, tablefmt="grid")
+
+        if not self.quiet:
+            print(json.dumps(dataReturn) if type(dataReturn) is dict else dataReturn)
+        return dataReturn
+
+
+class createHook(SDKCommon):
+    """Create an execution hook"""
+
+    def __init__(self, quiet=True, verbose=False):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body"""
+        self.quiet = quiet
+        self.verbose = verbose
+        super().__init__()
+        self.headers["accept"] = "application/astra-executionHook+json"
+        self.headers["Content-Type"] = "application/astra-executionHook+json"
+
+    def main(
+        self,
+        appID,
+        name,
+        scriptID,
+        stage,
+        action,
+        arguments,
+        containerRegex=None,
+        description=None,
+    ):
+
+        # endpoint = f"k8s/v1/apps/{appID}/executionHooks"
+        endpoint = f"core/v1/executionHooks"
+        url = self.base + endpoint
+        params = {}
+        data = {
+            "type": "application/astra-executionHook",
+            "version": "1.0",
+            "name": name,
+            "hookType": "custom",
+            "action": action,
+            "stage": stage,
+            "hookSourceID": scriptID,
+            "arguments": arguments,
+            "appID": appID,
+            "enabled": "true",
+        }
+        if description:
+            data["description"] = description
+        if containerRegex:
+            data["matchingCriteria"] = [{"type": "containerImage", "value": containerRegex}]
+
+        if self.verbose:
+            print(f"Creating executionHook {name}")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: POST", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("post", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
+            results = super().jsonifyResults(ret)
+            if not self.quiet:
+                print(json.dumps(results))
+            return results
+        else:
+            if not self.quiet:
+                print(f"API HTTP Status Code: {ret.status_code} - {ret.reason}")
+                if ret.text.strip():
+                    print(f"Error text: {ret.text}")
+            return False
+
+
+class destroyHook(SDKCommon):
+    """Given an appID and hookID destroy the hook.  Note that this doesn't unmanage
+    a hook, it actively destroys it. There is no coming back from this."""
+
+    def __init__(self, quiet=True, verbose=False):
+        """quiet: Will there be CLI output or just return (datastructure)
+        verbose: Print all of the ReST call info: URL, Method, Headers, Request Body"""
+        self.quiet = quiet
+        self.verbose = verbose
+        super().__init__()
+        self.headers["accept"] = "application/astra-executionHook+json"
+        self.headers["Content-Type"] = "application/astra-executionHook+json"
+
+    def main(self, appID, hookID):
+
+        # endpoint = f"k8s/v1/apps/{appID}/executionHooks/{hookID}"
+        endpoint = f"core/v1/executionHooks/{hookID}"
+        url = self.base + endpoint
+        params = {}
+        data = {
+            "type": "application/astra-hookSource",
+            "version": "1.0",
+            "appID": appID,  # Not strictly required at this time
+        }
+
+        if self.verbose:
+            print(f"Deleting hookID {hookID}")
+            print(colored(f"API URL: {url}", "green"))
+            print(colored("API Method: DELETE", "green"))
+            print(colored(f"API Headers: {self.headers}", "green"))
+            print(colored(f"API data: {data}", "green"))
+            print(colored(f"API params: {params}", "green"))
+
+        ret = super().apicall("delete", url, data, self.headers, params, self.verifySSL)
+
+        if self.verbose:
+            print(f"API HTTP Status Code: {ret.status_code}")
+            print()
+
+        if ret.ok:
             return True
         else:
             if not self.quiet:

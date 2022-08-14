@@ -4,30 +4,30 @@
 #Global Variables 
 @contentType = application/json
 @baseUrl = https://astra.demo.netapp.com
-@token = change_me
+@token = 0gD06KBeFdHwMUwd9mCBE5YrfwIcCv3g1MptJy4pPtg=
 @defaultAccountId = change_me
 @managedClusterId = change_me
 @defaultStorageClassId = change_me
 @managedAppId = change_me
 @managedAppBackupId = change_me
 
-###Step 2-9 List accounts
+###Step 2-10 List accounts
 GET {{baseUrl}}/accounts
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-14 List account users with parameters
+###Step 2-15 List account users with parameters
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/core/v1/users
  ?include=firstName,lastName,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-18 Get managed clusters
+###Step 2-19 Get managed clusters
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-22 Get the storage classes for a managed cluster
+###Step 2-23 Get the storage classes for a managed cluster
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}/storageClasses
 Accept: {{contentType}}
 Authorization: Bearer {{token}}

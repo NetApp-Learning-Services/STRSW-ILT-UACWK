@@ -6,14 +6,14 @@
 #They must be changed
 @contentType = application/json
 @baseUrl = https://astra.demo.netapp.com
-@token = QudoBTcHIMHa-L0CJupBm5SPtkOBG3ytb95FA4gFpsg=
+@token = 0gD06KBeFdHwMUwd9mCBE5YrfwIcCv3g1MptJy4pPtg=
 @defaultAccountId = b0770bc5-6f35-4eb2-8846-6c47a0cad914
 @managedClusterId = c32f9c8f-0b38-453e-892e-025ac7d7ce0d
 @defaultStorageClassId = ef4fe878-a42f-42ae-a3bc-301a10f738df
 @managedAppId = 0b3a78c1-5ec8-4f3c-909c-01f25de3dee6
 @managedAppBackupId = 5b239cee-78cf-40f2-9459-859f4fd197df
 
-###Step 2-9 List accounts
+###Step 2-10 List accounts
 GET {{baseUrl}}/accounts
 Accept: {{contentType}}
 Authorization: Bearer {{token}}

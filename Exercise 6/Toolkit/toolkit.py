@@ -859,7 +859,7 @@ def main():
         help="prioritize speed over validation (using this will not validate arguments, which "
         + "may have unintended consequences)",
     )
-    subparsers = parser.add_subparsers(dest="subcommand", required=True, help="subcommand help")
+    subparsers = parser.add_subparsers(dest="subcommand", help="subcommand help")
     #######
     # Top level subcommands
     # # Be sure to keep these in sync with verbs{}
@@ -905,18 +905,18 @@ def main():
     #######
     # subcommands "list", "create", "manage", "destroy", and "unmanage" have subcommands as well
     #######
-    subparserList = parserList.add_subparsers(title="objectType", dest="objectType", required=True)
+    subparserList = parserList.add_subparsers(title="objectType", dest="objectType")
     subparserCreate = parserCreate.add_subparsers(
-        title="objectType", dest="objectType", required=True
+        title="objectType", dest="objectType"
     )
     subparserManage = parserManage.add_subparsers(
-        title="objectType", dest="objectType", required=True
+        title="objectType", dest="objectType"
     )
     subparserDestroy = parserDestroy.add_subparsers(
-        title="objectType", dest="objectType", required=True
+        title="objectType", dest="objectType"
     )
     subparserUnmanage = parserUnmanage.add_subparsers(
-        title="objectType", dest="objectType", required=True
+        title="objectType", dest="objectType"
     )
     #######
     # end of subcommand "list", "create", "manage", "destroy", and "unmanage" subcommands

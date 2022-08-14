@@ -4,7 +4,7 @@
 #Global Variables 
 @contentType = application/json
 @baseUrl = https://astra.demo.netapp.com
-@token = 0gD06KBeFdHwMUwd9mCBE5YrfwIcCv3g1MptJy4pPtg=
+@token = change_me
 @defaultAccountId = change_me
 @managedClusterId = change_me
 @defaultStorageClassId = change_me
@@ -32,7 +32,7 @@ GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{mana
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-27 Update the default storage class for a managed cluster
+###Step 2-28 Update the default storage class for a managed cluster
 PUT {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}
 Accept: {{contentType}}
 Content-Type: {{contentType}}
@@ -45,27 +45,19 @@ Authorization: Bearer {{token}}
 
 }
 
-###Step 2-33 List unmanaged apps
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
- ?filter=managedState%20eq%20'unmanaged'
- &include=name,id,managedState
+###Step 2-35 List managed apps
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v2/managedClusters/{{managedClusterId}}/apps
+ ?include=name,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-37 List managed apps
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
- ?filter=managedState%20eq%20'managed'
- &include=name,id,managedState
+###Step 2-39 Get the backups for a managed app
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-41 Get the backups for a managed app
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
-Accept: {{contentType}}
-Authorization: Bearer {{token}}
-
-###Step 2-45 Create a backup for a managed app
-POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+###Step 2-43 Create a backup for a managed app
+POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups
 Accept: {{contentType}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}

@@ -4,37 +4,38 @@
 #Global Variables 
 #NOTE: These values will not work work in your environment
 #They must be changed
+
 @contentType = application/json
 @baseUrl = https://astra.demo.netapp.com
 @token = 0gD06KBeFdHwMUwd9mCBE5YrfwIcCv3g1MptJy4pPtg=
-@defaultAccountId = b0770bc5-6f35-4eb2-8846-6c47a0cad914
-@managedClusterId = c32f9c8f-0b38-453e-892e-025ac7d7ce0d
-@defaultStorageClassId = ef4fe878-a42f-42ae-a3bc-301a10f738df
-@managedAppId = 0b3a78c1-5ec8-4f3c-909c-01f25de3dee6
-@managedAppBackupId = 5b239cee-78cf-40f2-9459-859f4fd197df
+@defaultAccountId = 3556a25f-f8a5-4312-88cf-809f49f530a6
+@managedClusterId = ed68edf7-7cd1-483f-9074-62ac94c0d75b
+@defaultStorageClassId = a41d4a0d-39b5-47e7-9948-51b2e2c0f587
+@managedAppId = a2cce840-9649-4293-afad-953e7ff3d151
+@managedAppBackupId = 4f2d5fba-0c13-4ad5-9ce9-e0d630367ac4
 
 ###Step 2-10 List accounts
 GET {{baseUrl}}/accounts
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-14 List account users with parameters
+###Step 2-15 List account users with parameters
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/core/v1/users
  ?include=firstName,lastName,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-18 Get managed clusters
+###Step 2-19 Get managed clusters
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-22 Get the storage classes for a managed cluster
+###Step 2-23 Get the storage classes for a managed cluster
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}/storageClasses
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-27 Update the default storage class for a managed cluster
+###Step 2-28 Update the default storage class for a managed cluster
 PUT {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}
 Accept: {{contentType}}
 Content-Type: {{contentType}}
@@ -47,27 +48,19 @@ Authorization: Bearer {{token}}
 
 }
 
-###Step 2-33 List unmanaged apps
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
- ?filter=managedState%20eq%20'unmanaged'
- &include=name,id,managedState
+###Step 2-35 List managed apps
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v2/managedClusters/{{managedClusterId}}/apps
+ ?include=name,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-37 List managed apps
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/apps
- ?filter=managedState%20eq%20'managed'
- &include=name,id,managedState
+###Step 2-39 Get the backups for a managed app
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-41 Get the backups for a managed app
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
-Accept: {{contentType}}
-Authorization: Bearer {{token}}
-
-###Step 2-45 Create a backup for a managed app
-POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups
+###Step 2-43 Create a backup for a managed app
+POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups
 Accept: {{contentType}}
 Content-Type: {{contentType}}
 Authorization: Bearer {{token}}
@@ -77,12 +70,13 @@ Authorization: Bearer {{token}}
     "version": "1.1"
 }
 
-###Step 2-50 Get the backup status
-GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/appBackups/{{managedAppBackupId}}
+
+###Step 2-49 Get the backup status
+GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups/{{managedAppBackupId}}
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-51 Delete the backup 
-DELETE {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/managedApps/{{managedAppId}}/appBackups/{{managedAppBackupId}}
+###Step 2-50 Delete the backup 
+DELETE {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups/{{managedAppBackupId}}
 Accept: {{contentType}}
 Authorization: Bearer {{token}}

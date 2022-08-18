@@ -70,7 +70,6 @@ Authorization: Bearer {{token}}
     "version": "1.1"
 }
 
-
 ###Step 2-49 Get the backup status
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups/{{managedAppBackupId}}
 Accept: {{contentType}}

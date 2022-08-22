@@ -17,6 +17,7 @@ spec:
   version: 1
   backendName: c2-ontap-nas-backend
   storageDriverName: ontap-nas
+  replicationPolicy: MirrorAllSnapshots
   managementLIF: change_me
   dataLIF: change_me
   svm: svm0
@@ -32,6 +33,7 @@ spec:
   version: 1
   backendName: c2-ontap-san-backend
   storageDriverName: ontap-san
+  replicationPolicy: MirrorAllSnapshots
   managementLIF: change_me
   dataLIF: change_me
   svm: svm0

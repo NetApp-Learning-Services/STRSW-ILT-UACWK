@@ -17,6 +17,7 @@ spec:
   version: 1
   backendName: c2-ontap-nas-backend
   storageDriverName: ontap-nas
+  replicationPolicy: MirrorAllSnapshots
   managementLIF: 192.168.0.50
   dataLIF: 192.168.0.51
   svm: svm0
@@ -31,6 +32,7 @@ metadata:
 spec:
   version: 1
   backendName: c2-ontap-san-backend
+  replicationPolicy: MirrorAllSnapshots
   storageDriverName: ontap-san
   managementLIF: 192.168.0.50
   dataLIF: 192.168.0.52

@@ -7,3 +7,176 @@ PS C:\Users\Administrator.DEMO\repo\STRSW-ILT-UACWK> kubectl -n mywordpressapp g
 NAME                            DESIRED STATE   LOCAL PVC                       ACTUAL STATE   MESSAGE
 data-mywordpressapp-mariadb-0   established     data-mywordpressapp-mariadb-0
 mywordpressapp                  established     mywordpressapp
+
+
+
+Cluster1::> cluster peer show -instance
+
+                       Peer Cluster Name: Cluster2
+           Remote Intercluster Addresses: 192.168.0.107, 192.168.0.108
+      Availability of the Remote Cluster: Available
+                     Remote Cluster Name: Cluster2
+                     Active IP Addresses: 192.168.0.107, 192.168.0.108
+                   Cluster Serial Number: 1-80-000011
+                    Remote Cluster Nodes: Cluster2-01
+                   Remote Cluster Health: true
+                 Unreachable Local Nodes: -
+          Address Family of Relationship: ipv4
+    Authentication Status Administrative: use-authentication
+       Authentication Status Operational: ok
+                        Last Update Time: 8/22/2022 19:11:09
+            IPspace for the Relationship: Default
+Proposed Setting for Encryption of Inter-Cluster Communication: -
+Encryption Protocol For Inter-Cluster Communication: tls-psk
+  Algorithm By Which the PSK Was Derived: jpake
+
+
+Cluster2::> cluster peer show -instance
+
+                       Peer Cluster Name: Cluster1
+           Remote Intercluster Addresses: 192.168.0.105, 192.168.0.106
+      Availability of the Remote Cluster: Available
+                     Remote Cluster Name: Cluster1
+                     Active IP Addresses: 192.168.0.105, 192.168.0.106
+                   Cluster Serial Number: 1-80-000011
+                    Remote Cluster Nodes: Cluster1-01
+                   Remote Cluster Health: true
+                 Unreachable Local Nodes: -
+          Address Family of Relationship: ipv4
+    Authentication Status Administrative: use-authentication
+       Authentication Status Operational: ok
+                        Last Update Time: 8/22/2022 19:11:21
+            IPspace for the Relationship: Default
+Proposed Setting for Encryption of Inter-Cluster Communication: -
+Encryption Protocol For Inter-Cluster Communication: tls-psk
+  Algorithm By Which the PSK Was Derived: jpake
+
+
+
+Cluster1::> vserver peer show -instance
+
+  Local Vserver Name: svm0
+   Peer Vserver Name: svm0.16
+       Peering State: peered
+Peering Applications: snapmirror, flexcache
+   Peer Cluster Name: Cluster2
+ Remote Vserver Name: svm0
+
+
+Cluster2::> vserver peer show -instance
+
+  Local Vserver Name: svm0
+   Peer Vserver Name: svm0.1
+       Peering State: peered
+Peering Applications: snapmirror, flexcache
+   Peer Cluster Name: Cluster1
+ Remote Vserver Name: svm0
+
+
+PS C:\Users\Administrator.DEMO\repo\STRSW-ILT-UACWK> kubectl logs pod/trident-csi-6f84d986c-r7wwx --namespace=trident --container=trident-main --since=0 --tail=100
+time="2022-08-22T19:16:40Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=mywordpressapp TridentMirrorRelationship=mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=aee50c45-ad30-49a3-90f7-e2bf04f34bf6 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="TridentCrdController#reconcileTMR" crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=mywordpressapp TridentMirrorRelationship=mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=8f12606b-7228-440f-b47a-dd758cc2f2a1 requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="GRPC call: /csi.v1.Controller/CreateVolume" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="GRPC request: name:\"pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606\" capacity_range:<required_bytes:8589934592 > volume_capabilities:<mount:<fs_type:\"nfs\" > access_mode:<mode:SINGLE_NODE_WRITER > > parameters:<key:\"backendType\" value:\"ontap-nas\" > parameters:<key:\"fsType\" value:\"nfs\" > " requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg=">>>> CreateVolume" Method=CreateVolume Type=CSI_Controller name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Volume capabilities (1): [mount:<fs_type:\"nfs\" > access_mode:<mode:SINGLE_NODE_WRITER > ]" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="About to list backends: map[27b34062-9911-412d-97ad-7212919057c5:0xc0006b7b20 b83a96b5-31f4-4fbb-9cc3-44ef2ccf4478:0xc000031dc0 ca8872c5-fbd5-4697-bbc7-c4295eca6152:0xc000142af0 ea1bd254-9c57-42eb-9e30-d11a747cb0d7:0xc0002b7420]" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg=">>>> GetVolumeConfig" Method=GetVolumeConfig Type="K8S helper" name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Found cached PVC by UID." name=data-mywordpressapp-mariadb-0 namespace=mywordpressapp requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI uid=be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=info msg="Found PVC for requested volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606." UID=be09eee2-9c1e-4453-a7bb-5fd0430c8606 name=data-mywordpressapp-mariadb-0 namespace=mywordpressapp requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI size="{{8589934592 0} {<nil>}  BinarySI}" storageClass=nas-basic
+time="2022-08-22T19:16:40Z" level=debug msg="Found cached storage class by name." name=nas-basic requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=info msg="Found storage class for requested volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606." name=nas-basic requestID=f913bbe0-c09b-408d-af1c-c49147461164
+requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="<<<< GetVolumeConfig" Method=GetVolumeConfig Type="K8S helper" name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Orchestrator#getProtocol" accessMode=ReadWriteOnce protocol= requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI volumeMode=Filesystem
+time="2022-08-22T19:16:40Z" level=debug msg="Orchestrator#getProtocol" err="<nil>" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI resultProtocol=
+time="2022-08-22T19:16:40Z" level=debug msg="nasType request is not present" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Finally got 2 storage pools" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg=AddVolumeTransaction name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 op=addVolume requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Looking through 2 storage pools." requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI volume=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=debug msg="Attempting volume create." backend=c1-ontap-nas-backend backendUUID=27b34062-9911-412d-97ad-7212919057c5 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI size=8589934592 storage_class=nas-basic storage_pool=Cluster1_01_FC_1 volume=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 volumeInternal=trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606
+time="2022-08-22T19:16:40Z" level=warning msg="Failed to create the volume on this pool." backend=c1-ontap-nas-backend backendUUID=27b34062-9911-412d-97ad-7212919057c5 error="backend cannot
+satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)" pool=Cluster1_01_FC_1 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI volume=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=debug msg="Attempting volume create." backend=c2-ontap-nas-backend backendUUID=ca8872c5-fbd5-4697-bbc7-c4295eca6152 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI size=8589934592 storage_class=nas-basic storage_pool=Cluster2_01_FC_1 volume=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 volumeInternal=trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606
+time="2022-08-22T19:16:40Z" level=warning msg="Failed to create the volume on this pool." backend=c2-ontap-nas-backend backendUUID=ca8872c5-fbd5-4697-bbc7-c4295eca6152 error="backend cannot
+satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)" pool=Cluster2_01_FC_1 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI volume=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=debug msg="Volume event." eventType=Normal message="encountered error(s) in creating the volume: [Failed to create volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 on storage pool Cluster1_01_FC_1 from backend c1-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)]; [Failed to create volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 on storage pool Cluster2_01_FC_1 from backend c2-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)]" name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 reason=ProvisioningFailed requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg="Found cached PVC by UID." name=data-mywordpressapp-mariadb-0 namespace=mywordpressapp requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI uid=be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=debug msg="<<<< CreateVolume" Method=CreateVolume Type=CSI_Controller name=pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=error msg="GRPC error: rpc error: code = Unknown desc = encountered error(s) in creating the volume: [Failed to create volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 on storage pool Cluster1_01_FC_1 from backend c1-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)]; [Failed to create volume pvc-be09eee2-9c1e-4453-a7bb-5fd0430c8606 on storage pool Cluster2_01_FC_1 from backend c2-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_be09eee2_9c1e_4453_a7bb_5fd0430c8606: (backend SVM svm0 is not peered with required SVM svm0)]" requestID=f913bbe0-c09b-408d-af1c-c49147461164 requestSource=CSI
+time="2022-08-22T19:16:40Z" level=debug msg=removeTransactionFinalizers logSource=trident-crd-controller requestID=a32ad753-d362-45d3-b4e5-b8fbfc30e2ed requestSource=CRD tx.ObjectMeta.DeletionTimestamp="2022-08-22 19:16:40 +0000 UTC" tx.ResourceVersion=665334
+time="2022-08-22T19:16:40Z" level=debug msg="Has finalizers, removing them." logSource=trident-crd-controller requestID=a32ad753-d362-45d3-b4e5-b8fbfc30e2ed requestSource=CRD
+time="2022-08-22T19:16:40Z" level=debug msg="Node updated in cache." name=kubmas1.demo.netapp.com requestID=10b4bf5d-8477-49c4-89b8-3af69616a7b2 requestSource=Kubernetes
+time="2022-08-22T19:16:40Z" level=debug msg="Node updated in cache." name=kubwor1-1.demo.netapp.com requestID=e61f2ec7-9cdc-4ef2-888a-8f0871db2104 requestSource=Kubernetes
+time="2022-08-22T19:16:40Z" level=debug msg="PVC updated in cache." accessModes="[ReadWriteOnce]" name=data-mywordpressapp-mariadb-0 phase=Pending pv= requestID=a95e304e-d17e-409c-85af-7d2ad9971cb1 requestSource=Kubernetes size=8Gi storageClass=nas-basic uid=be09eee2-9c1e-4453-a7bb-5fd0430c8606
+time="2022-08-22T19:16:40Z" level=debug msg="PVC updated in cache." accessModes="[ReadWriteOnce]" name=mywordpressapp phase=Pending pv= requestID=79db30a9-a99a-42fa-a479-dbd67fe894c7 requestSource=Kubernetes size=10Gi storageClass=nas-basic uid=cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:40Z" level=debug msg="Node updated in cache." name=kubwor1-2.demo.netapp.com requestID=dc820b72-f09a-43a1-8c89-1d3a2f3b6023 requestSource=Kubernetes
+time="2022-08-22T19:16:40Z" level=debug msg="Storage class updated in cache." name=san-basic parameters="map[backendType:ontap-san]" provisioner=csi.trident.netapp.io requestID=cae39cfa-3fbd-450f-a3a4-b04c6c0ecd58 requestSource=Kubernetes
+time="2022-08-22T19:16:40Z" level=debug msg="Creating new storage pool list for backend." Backend=c2-ontap-san-backend Method=ConstructExternal pool=Cluster2_01_FC_1 requestID=cae39cfa-3fbd-450f-a3a4-b04c6c0ecd58 requestSource=Kubernetes storageClass=san-basic
+time="2022-08-22T19:16:40Z" level=debug msg="Creating new storage pool list for backend." Backend=c1-ontap-san-backend Method=ConstructExternal pool=Cluster1_01_FC_1 requestID=cae39cfa-3fbd-450f-a3a4-b04c6c0ecd58 requestSource=Kubernetes storageClass=san-basic
+time="2022-08-22T19:16:40Z" level=debug msg="Storage class updated in cache." name=nas-basic parameters="map[backendType:ontap-nas fsType:nfs]" provisioner=csi.trident.netapp.io requestID=07aefeea-6e60-4962-9820-2b871a831a36 requestSource=Kubernetes
+time="2022-08-22T19:16:40Z" level=debug msg="Creating new storage pool list for backend." Backend=c2-ontap-nas-backend Method=ConstructExternal pool=Cluster2_01_FC_1 requestID=07aefeea-6e60-4962-9820-2b871a831a36 requestSource=Kubernetes storageClass=nas-basic
+time="2022-08-22T19:16:40Z" level=debug msg="Creating new storage pool list for backend." Backend=c1-ontap-nas-backend Method=ConstructExternal pool=Cluster1_01_FC_1 requestID=07aefeea-6e60-4962-9820-2b871a831a36 requestSource=Kubernetes storageClass=nas-basic
+time="2022-08-22T19:16:41Z" level=debug msg="GRPC call: /csi.v1.Controller/CreateVolume" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="GRPC request: name:\"pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a\" capacity_range:<required_bytes:10737418240 > volume_capabilities:<mount:<fs_type:\"nfs\" > access_mode:<mode:SINGLE_NODE_WRITER > > parameters:<key:\"backendType\" value:\"ontap-nas\" > parameters:<key:\"fsType\" value:\"nfs\" > " requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg=">>>> CreateVolume" Method=CreateVolume Type=CSI_Controller name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="Volume capabilities (1): [mount:<fs_type:\"nfs\" > access_mode:<mode:SINGLE_NODE_WRITER > ]" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="About to list backends: map[27b34062-9911-412d-97ad-7212919057c5:0xc0006b7b20 b83a96b5-31f4-4fbb-9cc3-44ef2ccf4478:0xc000031dc0 ca8872c5-fbd5-4697-bbc7-c4295eca6152:0xc000142af0 ea1bd254-9c57-42eb-9e30-d11a747cb0d7:0xc0002b7420]" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg=">>>> GetVolumeConfig" Method=GetVolumeConfig Type="K8S helper" name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="Found cached PVC by UID." name=mywordpressapp namespace=mywordpressapp requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI uid=cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:41Z" level=info msg="Found PVC for requested volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a." UID=cf735f40-7585-4636-8fe4-7ad293d8eb6a name=mywordpressapp namespace=mywordpressapp requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI size="{{10737418240 0} {<nil>} 10Gi BinarySI}" storageClass=nas-basic
+time="2022-08-22T19:16:41Z" level=debug msg="Found cached storage class by name." name=nas-basic requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=info msg="Found storage class for requested volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a." name=nas-basic requestID=b6e87326-15bf-49c9-bf5d-634b926a965e
+requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="<<<< GetVolumeConfig" Method=GetVolumeConfig Type="K8S helper" name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="Orchestrator#getProtocol" accessMode=ReadWriteOnce protocol= requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI volumeMode=Filesystem
+time="2022-08-22T19:16:41Z" level=debug msg="Orchestrator#getProtocol" err="<nil>" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI resultProtocol=
+time="2022-08-22T19:16:41Z" level=debug msg="nasType request is not present" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="Finally got 2 storage pools" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg=AddVolumeTransaction name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a op=addVolume requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:41Z" level=debug msg="Looking through 2 storage pools." requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI volume=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:41Z" level=debug msg="Attempting volume create." backend=c1-ontap-nas-backend backendUUID=27b34062-9911-412d-97ad-7212919057c5 requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI size=10737418240 storage_class=nas-basic storage_pool=Cluster1_01_FC_1 volume=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a volumeInternal=trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a
+time="2022-08-22T19:16:41Z" level=warning msg="Failed to create the volume on this pool." backend=c1-ontap-nas-backend backendUUID=27b34062-9911-412d-97ad-7212919057c5 error="backend cannot
+satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)" pool=Cluster1_01_FC_1 requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI volume=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:41Z" level=debug msg="Attempting volume create." backend=c2-ontap-nas-backend backendUUID=ca8872c5-fbd5-4697-bbc7-c4295eca6152 requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI size=10737418240 storage_class=nas-basic storage_pool=Cluster2_01_FC_1 volume=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a volumeInternal=trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a
+time="2022-08-22T19:16:42Z" level=warning msg="Failed to create the volume on this pool." backend=c2-ontap-nas-backend backendUUID=ca8872c5-fbd5-4697-bbc7-c4295eca6152 error="backend cannot
+satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)" pool=Cluster2_01_FC_1 requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI volume=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:42Z" level=debug msg=removeTransactionFinalizers logSource=trident-crd-controller requestID=2b72dd76-5c40-4738-901a-50adc0165d85 requestSource=CRD tx.ObjectMeta.DeletionTimestamp="2022-08-22 19:16:42 +0000 UTC" tx.ResourceVersion=665346
+time="2022-08-22T19:16:42Z" level=debug msg="Has finalizers, removing them." logSource=trident-crd-controller requestID=2b72dd76-5c40-4738-901a-50adc0165d85 requestSource=CRD
+time="2022-08-22T19:16:42Z" level=debug msg="Volume event." eventType=Normal message="encountered error(s) in creating the volume: [Failed to create volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a on storage pool Cluster1_01_FC_1 from backend c1-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)]; [Failed to create volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a on storage pool Cluster2_01_FC_1 from backend c2-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)]" name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a reason=ProvisioningFailed requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:42Z" level=debug msg="Found cached PVC by UID." name=mywordpressapp namespace=mywordpressapp requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI uid=cf735f40-7585-4636-8fe4-7ad293d8eb6a
+time="2022-08-22T19:16:42Z" level=debug msg="<<<< CreateVolume" Method=CreateVolume Type=CSI_Controller name=pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:42Z" level=error msg="GRPC error: rpc error: code = Unknown desc = encountered error(s) in creating the volume: [Failed to create volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a on storage pool Cluster1_01_FC_1 from backend c1-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)]; [Failed to create volume pvc-cf735f40-7585-4636-8fe4-7ad293d8eb6a on storage pool Cluster2_01_FC_1 from backend c2-ontap-nas-backend: backend cannot satisfy create request for volume trident_pvc_cf735f40_7585_4636_8fe4_7ad293d8eb6a: (backend SVM svm0 is not peered with required SVM svm0)]" requestID=b6e87326-15bf-49c9-bf5d-634b926a965e requestSource=CSI
+time="2022-08-22T19:16:50Z" level=debug msg="GRPC call: /csi.v1.Controller/ListVolumes" requestID=f079c19a-1a88-4eda-8738-65ac532b406b requestSource=CSI
+time="2022-08-22T19:16:50Z" level=debug msg="GRPC request: " requestID=f079c19a-1a88-4eda-8738-65ac532b406b requestSource=CSI
+time="2022-08-22T19:16:50Z" level=debug msg=">>>> ListVolumes" Method=ListVolumes Type=CSI_Controller requestID=f079c19a-1a88-4eda-8738-65ac532b406b requestSource=CSI
+time="2022-08-22T19:16:50Z" level=debug msg="<<<< ListVolumes" Method=ListVolumes Type=CSI_Controller requestID=f079c19a-1a88-4eda-8738-65ac532b406b requestSource=CSI
+time="2022-08-22T19:16:50Z" level=debug msg="GRPC response: " requestID=f079c19a-1a88-4eda-8738-65ac532b406b requestSource=CSI
+time="2022-08-22T19:17:00Z" level=debug msg="Node updated in cache." name=kubmas1.demo.netapp.com requestID=d1a30336-25cf-4c7e-8e39-1b4cf2a83f0f requestSource=Kubernetes
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#reconcileTMR" crdControllerEvent=add logSource=trident-crd-controller requestID=792c5ce9-2f13-426c-a8be-691593de1d38 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/data-mywordpressapp-mariadb-0 crdControllerEvent=add logSource=trident-crd-controller requestID=792c5ce9-2f13-426c-a8be-691593de1d38 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=data-mywordpressapp-mariadb-0 TridentMirrorRelationship=data-mywordpressapp-mariadb-0 crdControllerEvent=add logSource=trident-crd-controller requestID=792c5ce9-2f13-426c-a8be-691593de1d38 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/data-mywordpressapp-mariadb-0 crdControllerEvent=add logSource=trident-crd-controller requestID=792c5ce9-2f13-426c-a8be-691593de1d38 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=c86b7c6c-5237-498f-b849-241ddd646986 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#reconcileTMR" crdControllerEvent=update logSource=trident-crd-controller requestID=e838e5c3-cae2-4855-8a15-c036846a22bf requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/data-mywordpressapp-mariadb-0 crdControllerEvent=update logSource=trident-crd-controller requestID=e838e5c3-cae2-4855-8a15-c036846a22bf requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=data-mywordpressapp-mariadb-0 TridentMirrorRelationship=data-mywordpressapp-mariadb-0 crdControllerEvent=update logSource=trident-crd-controller requestID=e838e5c3-cae2-4855-8a15-c036846a22bf requestSource=CRD
+time="2022-08-22T19:17:00Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/data-mywordpressapp-mariadb-0 crdControllerEvent=update logSource=trident-crd-controller requestID=e838e5c3-cae2-4855-8a15-c036846a22bf requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=1aa9e17b-46b7-4aeb-8109-41f44d2b6bc5 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#reconcileTMR" crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=mywordpressapp TridentMirrorRelationship=mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=add logSource=trident-crd-controller requestID=1c37cbe0-3670-4a90-8cfa-96fe102b94b5 requestSource=CRD
+time="2022-08-22T19:17:00Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=14991ee9-329f-48be-92fa-bd1cf523f00b requestSource=CRD
+time="2022-08-22T19:17:01Z" level=debug msg="TridentCrdController#reconcileTMR" crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:17:01Z" level=debug msg="Valid TridentMirrorRelationship provided." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:17:01Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=mywordpressapp TridentMirrorRelationship=mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:17:01Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
+time="2022-08-22T19:17:01Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=8979d5fe-b6f6-4da8-98f9-c9c4db234ce9 requestSource=CRD

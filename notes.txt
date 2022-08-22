@@ -1,0 +1,9 @@
+PS C:\Users\Administrator.DEMO\repo\STRSW-ILT-UACWK> kubectl -n mywordpressapp get tmr
+NAME                            DESIRED STATE   LOCAL PVC                       ACTUAL STATE   MESSAGE
+data-mywordpressapp-mariadb-0   promoted        data-mywordpressapp-mariadb-0   promoted
+mywordpressapp                  promoted        mywordpressapp                  promoted
+
+PS C:\Users\Administrator.DEMO\repo\STRSW-ILT-UACWK> kubectl -n mywordpressapp get tmr
+NAME                            DESIRED STATE   LOCAL PVC                       ACTUAL STATE   MESSAGE
+data-mywordpressapp-mariadb-0   established     data-mywordpressapp-mariadb-0
+mywordpressapp                  established     mywordpressapp

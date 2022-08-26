@@ -180,3 +180,48 @@ time="2022-08-22T19:17:01Z" level=debug msg="Valid TridentMirrorRelationship pro
 time="2022-08-22T19:17:01Z" level=debug msg="PV for local PVC for TridentMirrorRelationship does not yet exist." PVC=mywordpressapp TridentMirrorRelationship=mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
 time="2022-08-22T19:17:01Z" level=info msg="deferred syncing TridentMirrorRelationship, requeuing; PV for local PVC for TridentMirrorRelationship does not yet exist." TridentMirrorRelationship=mywordpressapp/mywordpressapp crdControllerEvent=update logSource=trident-crd-controller requestID=f47d51d4-ef80-4a62-94cd-7f96ba6478b0 requestSource=CRD
 time="2022-08-22T19:17:01Z" level=debug msg="TridentCrdController#processNextWorkItem" logSource=trident-crd-controller requestID=8979d5fe-b6f6-4da8-98f9-c9c4db234ce9 requestSource=CRD
+
+
+
+Cluster2::>  event log show -event rdb.recovery.* -severity *
+Time                Node             Severity      Event
+------------------- ---------------- ------------- ---------------------------
+8/26/2022 16:13:10  Cluster2-01      EMERGENCY     rdb.recovery.failed: Error: Unable to find a master. Unable to recover the local database of Data Replication Module: Crs.
+8/26/2022 16:13:09  Cluster2-01      EMERGENCY     rdb.recovery.failed: Error: Unable to find a master. Unable to recover the local database of Data Replication Module: VifMgr.
+8/26/2022 16:13:07  Cluster2-01      EMERGENCY     rdb.recovery.failed: Error: Unable to find a master. Unable to recover the local database of Data Replication Module: VLDB.
+8/26/2022 16:13:01  Cluster2-01      EMERGENCY     rdb.recovery.failed: Error: Unable to find a master. Unable to recover the local database of Data Replication Module: Bcom.
+8/26/2022 16:11:30  Cluster2-01      NOTICE        rdb.recovery.started: Automatic recovery of Data Replication Module Crs started.
+8/26/2022 16:11:29  Cluster2-01      NOTICE        rdb.recovery.started: Automatic recovery of Data Replication Module VifMgr started.
+8/26/2022 16:11:26  Cluster2-01      NOTICE        rdb.recovery.started: Automatic recovery of Data Replication Module VLDB started.
+8/26/2022 16:11:19  Cluster2-01      NOTICE        rdb.recovery.started: Automatic recovery of Data Replication Module Bcom started.
+8/26/2022 16:05:58  Cluster2-01      NOTICE        rdb.recovery.started: Automatic recovery of Data Replication Module VifMgr started.
+
+Cluster2::system node*> system configuration recovery node mroot-state show
+Node: Cluster2-01
+Delay WAFL Event Clear: 0
+
+WAFL: Normal
+Event: 0x0
+WAFL event bootarg is not set
+
+RDB Recovery State: 5050055000
+VLDB: RDB auto-recovery failed to find master (5)
+Management: Healthy (0)
+VifMgr: RDB auto-recovery failed to find master (5)
+Bcom: RDB auto-recovery failed to find master (0)
+Crs: RDB auto-recovery failed to find master (0)
+
+Cluster2::system node*> system configuration recovery node mroot-state clear -recovery-state
+
+Error: Missing value for -recovery-state.
+
+Cluster2::system node*> system configuration recovery node mroot-state clear -recovery-state rdb
+
+Warning: Confirm your intention to clear RDB recovery state and restart the
+         management process.
+Do you want to continue? {y|n}: y
+                                                                                The management gateway server restarted. Waiting to see if the connection can be                                                                                The management gateway server restarted. Waiting to see if the connection can be reestablished.
+
+The connection with the management gateway server has been reestablished.
+If the root cause of the interruption was a process core, you can see the core file details by issuing the following command:
+        system node coredump show -node local -type application -corename mgwd.* -instance

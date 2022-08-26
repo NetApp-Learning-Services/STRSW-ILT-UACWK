@@ -918,7 +918,7 @@ spec:
           value: "2"
         - name: ACCOP_HELM_INSTALLTIMEOUT
           value: 5m
-        image: ASTRA_IMAGE_REGISTRY/acc-operator:22.05.98
+        image: ASTRA_IMAGE_REGISTRY/acc-operator:22.05.99
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

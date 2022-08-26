@@ -225,3 +225,5 @@ Do you want to continue? {y|n}: y
 The connection with the management gateway server has been reestablished.
 If the root cause of the interruption was a process core, you can see the core file details by issuing the following command:
         system node coredump show -node local -type application -corename mgwd.* -instance
+
+Test

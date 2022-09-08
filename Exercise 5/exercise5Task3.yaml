@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: c2-svm0-backend-secret
+  name: c2-svmd-backend-secret
   namespace: trident
 type: kubernetes.io/basic-auth
 stringData:
@@ -20,9 +20,9 @@ spec:
   replicationPolicy: MirrorAllSnapshots
   managementLIF: change_me
   dataLIF: change_me
-  svm: svm0
+  svm: svmd
   credentials:
-    name: c2-svm0-backend-secret
+    name: c2-svmd-backend-secret
 ---
 apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
@@ -36,6 +36,6 @@ spec:
   replicationPolicy: MirrorAllSnapshots
   managementLIF: change_me
   dataLIF: change_me
-  svm: svm0
+  svm: svmd
   credentials:
-    name: c2-svm0-backend-secret
+    name: c2-svmd-backend-secret

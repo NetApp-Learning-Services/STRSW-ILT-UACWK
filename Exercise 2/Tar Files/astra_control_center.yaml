@@ -1,0 +1,28 @@
+apiVersion: astra.netapp.io/v1
+kind: AstraControlCenter
+metadata:
+  name: astra
+spec:
+  accountName: "Example"
+  astraVersion: "22.08.1-26"
+  astraAddress: "astra.example.com"
+  # astraKubeConfigSecret is set to name of the secret which contains kubeconfig of the ACC cluster
+  # secret needs to be created prior to deploying ACC if you want it to be managed by Astra
+  # astraKubeConfigSecret: "acc-kubeconfig-cred"
+  autoSupport:
+    enrolled: true
+  email: "admin@example.com"
+  firstName: "SRE"
+  lastName: "Admin"
+  imageRegistry:
+    name: "example.registry/astra"
+    secret: "astra-registry-cred"
+  storageClass: "ontap-gold"
+  volumeReclaimPolicy: "Retain"  
+  ingressType: "Generic"  
+  astraResourcesScaler: "Default"
+  additionalValues: {}
+  crds:
+    externalTraefik: false
+    externalCertManager: false
+  avpDeploy: false

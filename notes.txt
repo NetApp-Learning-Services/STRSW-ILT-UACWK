@@ -291,3 +291,85 @@ curl -X 'GET' \
     ],
     "metadata": {}
   }
+
+
+
+  curl -X 'GET' \
+  'https://astra.demo.netapp.com/accounts/f42b727d-575c-4cad-987b-33d9baa5350f/topology/v1/managedStorageBackends?include=id%2Cname%2Cstate' \
+  -H 'accept: application/json' \
+  -H 'Authorization: Bearer x'
+
+  {
+  "items": [
+    {
+      "backendCredentialsName": "192.168.0.101",
+      "backendName": "Cluster1",
+      "backendType": "ontap",
+      "backendVersion": "9.9.1",
+      "configVersion": "Not applicable",
+      "healthState": "normal",
+      "healthStateUnready": [],
+      "id": "3a1fda31-68de-433e-a50b-505f1a2c1b7a",
+      "location": "Not applicable",
+      "metadata": {
+        "labels": [],
+        "creationTimestamp": "2022-09-08T17:19:25Z",
+        "modificationTimestamp": "2022-09-08T17:19:25Z",
+        "createdBy": "65257f91-95b1-46b4-8524-b5dba3b6169c"
+      },
+      "ontap": {
+        "backendManagementIP": "192.168.0.101",
+        "managementIPs": [
+          "192.168.0.111",
+          "192.168.0.101"
+        ]
+      },
+      "protectionPolicy": "Not applicable",
+      "protectionState": "unknown",
+      "protectionStateUnready": [],
+      "region": "Not applicable",
+      "state": "running",
+      "stateUnready": [],
+      "managedState": "managed",
+      "managedStateUnready": [],
+      "type": "application/astra-storageBackend",
+      "version": "1.1",
+      "zone": "Not applicable"
+    },
+    {
+      "backendCredentialsName": "192.168.0.102",
+      "backendName": "Cluster2",
+      "backendType": "ontap",
+      "backendVersion": "9.9.1",
+      "configVersion": "Not applicable",
+      "healthState": "normal",
+      "healthStateUnready": [],
+      "id": "bd560ee5-7168-4567-ae00-d81500c09275",
+      "location": "Not applicable",
+      "metadata": {
+        "labels": [],
+        "creationTimestamp": "2022-09-12T15:39:10Z",
+        "modificationTimestamp": "2022-09-12T15:39:10Z",
+        "createdBy": "65257f91-95b1-46b4-8524-b5dba3b6169c"
+      },
+      "ontap": {
+        "backendManagementIP": "192.168.0.102",
+        "managementIPs": [
+          "192.168.0.112",
+          "192.168.0.102"
+        ]
+      },
+      "protectionPolicy": "Not applicable",
+      "protectionState": "unknown",
+      "protectionStateUnready": [],
+      "region": "Not applicable",
+      "state": "running",
+      "stateUnready": [],
+      "managedState": "managed",
+      "managedStateUnready": [],
+      "type": "application/astra-storageBackend",
+      "version": "1.1",
+      "zone": "Not applicable"
+    }
+  ]
+}

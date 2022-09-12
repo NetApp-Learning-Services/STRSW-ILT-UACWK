@@ -6,4 +6,4 @@ WeaveNet 2.8.1 <br />
 Docker 20.10.12 <br />
 ONTAP 9.9.1 <br />
 Astra Trident 22.07.0 <br />
-Astra Control 22.08.1-16 <br />
+Astra Control 22.08.1-26 <br />

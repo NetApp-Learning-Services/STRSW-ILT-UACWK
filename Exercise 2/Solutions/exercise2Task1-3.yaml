@@ -902,7 +902,7 @@ spec:
         - --upstream=http://127.0.0.1:8080/
         - --logtostderr=true
         - --v=10
-        image: docker-registry:30001/netapp/astracc/22.08.2-16/kube-rbac-proxy:v4.8.0 # updated
+        image: docker-registry:30001/netapp/astracc/22.08.1-26/kube-rbac-proxy:v4.8.0 # updated
         name: kube-rbac-proxy
         ports:
         - containerPort: 8443

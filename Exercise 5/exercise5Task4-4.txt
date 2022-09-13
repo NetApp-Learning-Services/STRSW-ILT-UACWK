@@ -1,6 +1,0 @@
-PowerShell option:  
-    $str = Invoke-Expression "& kubectl get secret --namespace mywordpressapp2 mywordpressapp2 -o jsonpath='{.data.wordpress-password}'" 
-    [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($str))
-
-Bash option: 
-    echo Password: $(kubectl get secret --namespace mywordpressapp2 mywordpressapp2 -o jsonpath="{.data.wordpress-password}" | base64 -d)

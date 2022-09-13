@@ -7,6 +7,7 @@ metadata:
 provisioner: csi.trident.netapp.io
 parameters:
   backendType: ontap-nas
+  fsType: nfs  # this is needed to get Wordpress mariadb to run
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass

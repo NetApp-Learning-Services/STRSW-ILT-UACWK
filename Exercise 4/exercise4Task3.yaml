@@ -1,0 +1,8 @@
+wordpressUsername: admin
+wordpressPassword: Netapp1!
+wordpressEmail: admin@demo.netapp.com
+wordpressFirstName: Astra
+wordpressLastName: Control
+wordpressBlogName: AstraControlIsAwesome
+service: 
+  type: LoadBalancer

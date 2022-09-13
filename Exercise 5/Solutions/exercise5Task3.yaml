@@ -1,41 +1,41 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: c2-svmd-backend-secret
+  name: c2-svmdest-backend-secret
   namespace: trident
 type: kubernetes.io/basic-auth
 stringData:
-  username: vsadmin
+  username: admin
   password: Netapp1!
 ---
 apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
 metadata:
-  name: c2-nas-backend
+  name: c2-svmdest-nas-backend
   namespace: trident
 spec:
   version: 1
-  backendName: c2-ontap-nas-backend
+  backendName: c2-svmdest-ontap-nas-backend
   storageDriverName: ontap-nas
   replicationPolicy: MirrorAllSnapshots
-  managementLIF: 192.168.0.50
+  managementLIF: 192.168.0.102
   dataLIF: 192.168.0.51
-  svm: svmd
+  svm: svmdest
   credentials:
-    name: c2-svmd-backend-secret
+    name: c2-svmdest-backend-secret
 ---
 apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
 metadata:
-  name: c2-san-backend
+  name: c2-svmdest-san-backend
   namespace: trident
 spec:
   version: 1
-  backendName: c2-ontap-san-backend
+  backendName: c2-svmdest-ontap-san-backend
   replicationPolicy: MirrorAllSnapshots
   storageDriverName: ontap-san
-  managementLIF: 192.168.0.50
+  managementLIF: 192.168.0.102
   dataLIF: 192.168.0.52
-  svm: svmd
+  svm: svmdest
   credentials:
-    name: c2-svmd-backend-secret
+    name: c2-svmdest-backend-secret

@@ -16,4 +16,4 @@ spec:
   imageRegistry:
     name: "docker-registry:30001/netapp/astracc/22.08.1-26"
     secret: "reg-cred-secret"
-  storageClass: "nas-basic"
+  storageClass: "c2-svmacc-nas-basic"

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: c1-svmacc-backend-secret
+  name: c2-svmacc-backend-secret
   namespace: trident
 type: kubernetes.io/basic-auth
 stringData:
@@ -11,31 +11,31 @@ stringData:
 apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
 metadata:
-  name: c1-svmacc-nas-backend
+  name: c2-svmacc-nas-backend
   namespace: trident
 spec:
   version: 1
-  backendName: c1-svmacc-ontap-nas-backend
+  backendName: c2-svmacc-ontap-nas-backend
   storageDriverName: ontap-nas
   replicationPolicy: MirrorAllSnapshots
   managementLIF: 192.168.0.30
   dataLIF: 192.168.0.31
   svm: svmacc
   credentials:
-    name: c1-svmacc-backend-secret
+    name: c2-svmacc-backend-secret
 ---
 apiVersion: trident.netapp.io/v1
 kind: TridentBackendConfig
 metadata:
-  name: c1-svmacc-san-backend
+  name: c2-svmacc-san-backend
   namespace: trident
 spec:
   version: 1
-  backendName: c1-svmacc-ontap-san-backend
+  backendName: c2-svmacc-ontap-san-backend
   replicationPolicy: MirrorAllSnapshots
   storageDriverName: ontap-san
   managementLIF: 192.168.0.30
   dataLIF: 192.168.0.32
   svm: svmacc
   credentials:
-    name: c1-svmacc-backend-secret
+    name: c2-svmacc-backend-secret

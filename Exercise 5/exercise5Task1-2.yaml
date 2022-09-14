@@ -1,0 +1,18 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c2-svmdest-nas-basic
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c2-svmdest-ontap-nas-backend:.*"
+  fsType: nfs  # this is needed to get Wordpress mariadb to run
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c2-svmdest-san-basic
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c2-svmdest-ontap-san-backend:.*"

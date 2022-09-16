@@ -17,18 +17,21 @@ $destination = "/root"
 $command1 = "tar -vxzf /root/astra-control-center-22.08.1-26.tar.gz"
 $command2 = "cp /root/kubectl-astra/astra_linux_amd64 /usr/bin/kubectl-astra"
 $command3 = "kubectl astra packages push-images -m /root/acc/acc.manifest.yaml -r docker-registry:30001 -u admin -p Netapp1!"
-$validation = "curl https://'$IPAddress':30001/v2/_catalog"
+$validation = "curl https://'$IPAddress':30001/v2/_catalog --insecure --user admin:Netapp1!"
 
 # Executing commands and reporting back
 
     $ssh=New-SSHSession -ComputerName $IPAddress -Credential $credential -AcceptKey 
-    Set-SCPItem -ComputerName $IPAddress -Credential $credential -Path $file -Destination $destination -AcceptKey | Out-Null
+    Set-SCPItem -ComputerName $IPAddress -Credential $credential -Path $file -Destination $destination -AcceptKey | Out-Default
     Write-Output("Starting untar")
-    $commandResult1 = Invoke-SSHCommand -SSHSession $ssh -Command $command1 | Out-Null
+    $commandResult1 = Invoke-SSHCommand -SSHSession $ssh -Command $command1 -TimeOut 900 | Out-Default  
+    Write-Output ($commandResult1)
     Write-Output("Starting copy")
-    $commandResult2 = Invoke-SSHCommand -SSHSession $ssh -Command $command2 | Out-Null
+    $commandResult2 = Invoke-SSHCommand -SSHSession $ssh -Command $command2 | Out-Default  
+    Write-Output ($commandResult2)
     Write-Output("Starting push images")
-    $commandResult3 = Invoke-SSHCommand -SSHSession $ssh -Command $command3 | Out-Null
+    $commandResult3 = Invoke-SSHCommand -SSHSession $ssh -Command $command3 -TimeOut 900 | Out-Default    
+    Write-Output ($commandResult3)
     $validationResult = Invoke-SSHCommand -SSHSession $ssh -Command $validation
     Write-Output($IPAddress + " result:")
     Write-Output($validationResult.Output)

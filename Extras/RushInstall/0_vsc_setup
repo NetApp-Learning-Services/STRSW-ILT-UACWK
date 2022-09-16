@@ -1,0 +1,4 @@
+https://github.com/NetApp-Learning-Services/STRSW-ILT-UACWK 
+
+codium --install-extension ms-kubernetes-tools.vscode-kubernetes-tools 
+codium --install-extension ms-vscode.powershell

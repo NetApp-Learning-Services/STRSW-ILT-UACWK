@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: c2-svmacc-backend-secret
+  namespace: trident
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: Netapp1!
+---
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: c2-svmacc-nas-backend
+  namespace: trident
+spec:
+  version: 1
+  backendName: c2-svmacc-ontap-nas-backend
+  storageDriverName: ontap-nas
+  replicationPolicy: MirrorAllSnapshots
+  managementLIF: 192.168.0.102
+  dataLIF: 192.168.0.31
+  svm: svmacc
+  credentials:
+    name: c2-svmacc-backend-secret
+---
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: c2-svmacc-san-backend
+  namespace: trident
+spec:
+  version: 1
+  backendName: c2-svmacc-ontap-san-backend
+  replicationPolicy: MirrorAllSnapshots
+  storageDriverName: ontap-san
+  managementLIF: 192.168.0.102
+  dataLIF: 192.168.0.32
+  svm: svmacc
+  credentials:
+    name: c2-svmacc-backend-secret
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c2-svmacc-nas-basic
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c2-svmacc-ontap-nas-backend:.*"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c2-svmacc-san-basic
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c2-svmacc-ontap-san-backend:.*"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: c1-svmsource-backend-secret
+  namespace: trident
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: Netapp1!
+---
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: c1-svmsource-nas-backend
+  namespace: trident
+spec:
+  version: 1
+  backendName: c1-svmsource-ontap-nas-backend
+  storageDriverName: ontap-nas
+  replicationPolicy: MirrorAllSnapshots
+  managementLIF: 192.168.0.101
+  dataLIF: 192.168.0.41
+  svm: svmsource
+  credentials:
+    name: c1-svmsource-backend-secret
+---
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: c1-svmsource-san-backend
+  namespace: trident
+spec:
+  version: 1
+  backendName: c1-svmsource-ontap-san-backend
+  replicationPolicy: MirrorAllSnapshots
+  storageDriverName: ontap-san
+  managementLIF: 192.168.0.101
+  dataLIF: 192.168.0.42
+  svm: svmsource
+  credentials:
+    name: c1-svmsource-backend-secret
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c1-svmsource-nas-basic
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c1-svmsource-ontap-nas-backend:.*"
+  fsType: nfs  # this is needed to get Wordpress mariadb to run
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: c1-svmsource-san-basic
+provisioner: csi.trident.netapp.io
+parameters:
+  storagePools: "c1-svmsource-ontap-san-backend:.*"
+---

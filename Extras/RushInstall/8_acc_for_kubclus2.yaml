@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: netapp-acc
+---
+# kubectl create secret docker-registry reg-cred-secret --docker-server="docker-registry:30001" --docker-username=admin --docker-password=Netapp1! --dry-run=client -o yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: reg-cred-secret
+  namespace: netapp-acc
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJkb2NrZXItcmVnaXN0cnk6MzAwMDEiOnsidXNlcm5hbWUiOiJhZG1pbiIsInBhc3N3b3JkIjoiTmV0YXBwMSEiLCJhdXRoIjoiWVdSdGFXNDZUbVYwWVhCd01TRT0ifX19
+---
+apiVersion: astra.netapp.io/v1
+kind: AstraControlCenter
+metadata:
+  name: astra 
+  namespace: netapp-acc
+spec:
+  accountName: "Demo"
+  astraVersion: "22.08.1-26"
+  astraAddress: "astra.demo.netapp.com"
+  autoSupport:
+    enrolled: false
+  email: "admin@demo.netapp.com"
+  firstName: "SRE"
+  lastName: "Admin"
+  ingressType: "AccTraefik"  
+  imageRegistry:
+    name: "docker-registry:30001/netapp/astracc/22.08.1-26"
+    secret: "reg-cred-secret"
+  storageClass: "c2-svmacc-nas-basic"

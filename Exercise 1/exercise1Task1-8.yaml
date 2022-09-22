@@ -5,5 +5,5 @@ metadata:
 spec:
   debug: true
   namespace: trident
-  imagePullSecrets:
+  imagePullSecrets:  #updated
   - dockerhubkey

@@ -11,7 +11,8 @@ kind: ServiceAccount
 metadata:
   name: snapshot-controller
   namespace: kube-system
-
+imagePullSecrets:  #updated
+- name: dockerhubkey
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

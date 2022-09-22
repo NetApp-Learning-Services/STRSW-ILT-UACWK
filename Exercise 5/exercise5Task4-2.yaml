@@ -84,6 +84,8 @@ metadata:
     app: metallb
   name: controller
   namespace: metallb-system
+imagePullSecrets:  #updated
+- name: dockerhubkey
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -92,6 +94,8 @@ metadata:
     app: metallb
   name: speaker
   namespace: metallb-system
+imagePullSecrets:  #updated
+- name: dockerhubkey
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

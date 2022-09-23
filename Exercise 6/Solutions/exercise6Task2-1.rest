@@ -15,27 +15,27 @@ GET {{baseUrl}}/accounts
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-15 List account users with parameters
+###Step 2-14 List account users with parameters
 @defaultAccountId = {{accountsRequest.response.body.$.['items'][?(@.name=='Demo')].id}}
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/core/v1/users
  ?include=firstName,lastName,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-19 Get managed clusters
+###Step 2-17 Get managed clusters
 # @name managedCluster
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-23 Get the storage classes for a managed cluster
+###Step 2-20 Get the storage classes for a managed cluster
 @managedClusterId = {{managedCluster.response.body.$.['items'][?(@.name=='kubclus2')].id}} 
 # @name defaultStorageClass
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}/storageClasses
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-28 Update the default storage class for a managed cluster to san-basic
+###Step 2-24 Update the default storage class for a managed cluster to san-basic
 @defaultStorageClassId = {{defaultStorageClass.response.body.$.['items'][?(@.name=='san-basic')].id}}
 
 PUT {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v1/managedClusters/{{managedClusterId}}
@@ -50,21 +50,21 @@ Authorization: Bearer {{token}}
 
 }
 
-###Step 2-35 List managed apps
+###Step 2-30 List managed apps
 # @name managedApp
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/topology/v2/managedClusters/{{managedClusterId}}/apps
  ?include=name,id
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-39 Get the backups for the mysqlapp 
+###Step 2-33 Get the backups for the mysqlapp 
 @managedAppId ={{managedApp.response.body.$.['items'][?(@[0] =='mysqlapp')][1]}}
 
 GET {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups
 Accept: {{contentType}}
 Authorization: Bearer {{token}}
 
-###Step 2-43 Create a backup for a managed app
+###Step 2-36 Create a backup for a managed app
 # @name managedAppBackup
 
 POST {{baseUrl}}/accounts/{{defaultAccountId}}/k8s/v1/apps/{{managedAppId}}/appBackups

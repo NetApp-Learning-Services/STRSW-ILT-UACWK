@@ -2,7 +2,7 @@
 # and is not intented to be used in a production enviroment
 
 # Install the module required
-Install-Module -Name Posh-SSH
+Install-Module -Name Posh-SSH -Scope CurrentUser
 
 # Get the IPAddress for kubmas2
 $IPAddress = "192.168.0.96"

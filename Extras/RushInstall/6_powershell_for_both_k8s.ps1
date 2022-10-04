@@ -1,7 +1,7 @@
 
 
 # Install the module required
-Install-Module -Name Posh-SSH
+Install-Module -Name Posh-SSH -Scope CurrentUser
 
 # Get the nodes and get the IPAddress for each node
 $collection = (kubectl get nodes -o json | convertfrom-Json)

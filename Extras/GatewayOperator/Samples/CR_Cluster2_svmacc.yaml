@@ -18,7 +18,7 @@ stringData:
   username: vsadmin
   password: Netapp1!
 ---
-apiVersion: gateway.netapp.com/v1alpha1
+apiVersion: gateway.netapp.com/v1alpha2
 kind: StorageVirtualMachine
 metadata:
   name: svmacc
@@ -61,3 +61,17 @@ spec:
         ro: any
         superuser: any
         anon:  "65534"
+  iscsi:
+    enabled: true
+    alias: testVs
+    interfaces:
+    - name: iscsi1
+      ip: 192.168.0.32
+      netmask: 255.255.255.0
+      broadcastDomain: Default
+      homeNode: Cluster2-01
+    - name: iscsi2
+      ip: 192.168.0.33
+      netmask: 255.255.255.0
+      broadcastDomain: Default
+      homeNode: Cluster2-01

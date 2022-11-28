@@ -63,15 +63,15 @@ spec:
         anon:  "65534"
   iscsi:
     enabled: true
-    alias: testVs
+    alias: svmsource
     interfaces:
     - name: iscsi1
       ip: 192.168.0.42
       netmask: 255.255.255.0
       broadcastDomain: Default
-      homeNode: Cluster2-01
+      homeNode: Cluster1-01
     - name: iscsi2
       ip: 192.168.0.43
       netmask: 255.255.255.0
       broadcastDomain: Default
-      homeNode: Cluster2-01
+      homeNode: Cluster1-01

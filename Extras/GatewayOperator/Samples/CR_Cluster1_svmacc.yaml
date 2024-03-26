@@ -11,7 +11,7 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: ontap-svmsource-admin
+  name: ontap-svmacc-admin
   namespace: gateway-system
 type: kubernetes.io/basic-auth
 stringData:
@@ -21,10 +21,10 @@ stringData:
 apiVersion: gateway.netapp.com/v1beta1
 kind: StorageVirtualMachine
 metadata:
-  name: svmsource
+  name: svmacc
   namespace: gateway-system
 spec:
-  svmName: svmsource
+  svmName: svmacc
   svmDeletionPolicy: Retain
   clusterHost: 192.168.0.101
   debug: false
@@ -32,12 +32,12 @@ spec:
   - name: Cluster1_01_FC_1
   management:
     name: manage1
-    ip: 192.168.0.40
+    ip: 192.168.0.30
     netmask: 255.255.255.0
     broadcastDomain: Default
     homeNode: Cluster1-01
   vsadminCredentials:
-    name: ontap-svmsource-admin
+    name: ontap-svmacc-admin
     namespace: gateway-system
   clusterCredentials:
     name: ontap-cluster1-admin
@@ -46,10 +46,10 @@ spec:
     enabled: true
     v3: true
     v4: true
-    v41: true
+    v41: false
     interfaces:
     - name: nfs1
-      ip: 192.168.0.41
+      ip: 192.168.0.31
       netmask: 255.255.255.0
       broadcastDomain: Default
       homeNode: Cluster1-01
@@ -64,15 +64,15 @@ spec:
         anon:  "65534"
   iscsi:
     enabled: true
-    alias: svmsource
+    alias: svmacc
     interfaces:
     - name: iscsi1
-      ip: 192.168.0.42
+      ip: 192.168.0.32
       netmask: 255.255.255.0
       broadcastDomain: Default
       homeNode: Cluster1-01
     - name: iscsi2
-      ip: 192.168.0.43
+      ip: 192.168.0.33
       netmask: 255.255.255.0
       broadcastDomain: Default
       homeNode: Cluster1-01

@@ -1,15 +1,15 @@
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: c2-svmacc-nas-basic
+  name: c1-svmacc-nas-basic
 provisioner: csi.trident.netapp.io
 parameters:
-  storagePools: "c2-svmacc-ontap-nas-backend:.*"
+  storagePools: "c1-svmacc-ontap-nas-backend:.*"
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: c2-svmacc-san-basic
+  name: c1-svmacc-san-basic
 provisioner: csi.trident.netapp.io
 parameters:
-  storagePools: "c2-svmacc-ontap-san-backend:.*"
+  storagePools: "c1-svmacc-ontap-san-backend:.*"

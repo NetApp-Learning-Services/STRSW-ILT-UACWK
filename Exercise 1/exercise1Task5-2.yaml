@@ -17,7 +17,7 @@ spec:
         app: registry
     spec:
       tolerations:
-      - key: node-role.kubernetes.io/master
+      - key: node-role.kubernetes.io/control-plane
         effect: NoSchedule
       affinity:
         nodeAffinity: 
@@ -27,7 +27,7 @@ spec:
               - key: kubernetes.io/hostname
                 operator: In
                 values: 
-                - "kubmas2.demo.netapp.com" #run on master of the 4-node cluster
+                - "kubmas1-1" #run on master of the 4-node cluster
       containers:
       - name: registry
         image: registry:2.6.2

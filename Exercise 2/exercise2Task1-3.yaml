@@ -882,6 +882,12 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
+      #begin added by Curtis
+      hostAliases:  
+      - ip: "192.168.0.61"
+        hostnames:
+        - "docker-registry"
+      #end added by Curtis
       containers:
       - args:
         - --secure-listen-address=0.0.0.0:8443

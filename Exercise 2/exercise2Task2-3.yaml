@@ -17,7 +17,7 @@ spec:
   astraResourcesScaler: "Off"
   ingressType: "AccTraefik"  
   imageRegistry:
-    name: "192.168.0.61:30001/netapp/acc/24.02.0-69"
+    name: "docker-registry:30001/netapp/acc/24.02.0-69"
     secret: "reg-cred-secret"
   storageClass: "c1-svmacc-nas-basic"
   additionalValues: {}

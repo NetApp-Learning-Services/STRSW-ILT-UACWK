@@ -5,15 +5,22 @@ metadata:
   namespace: netapp-acc
 spec:
   accountName: "Demo"
-  astraVersion: "22.08.1-26"
+  astraVersion: "24.02.0-69"
   astraAddress: "astra.demo.netapp.com"
   autoSupport:
     enrolled: false
   email: "admin@demo.netapp.com"
   firstName: "SRE"
   lastName: "Admin"
+  volumeReclaimPolicy: "Delete" #maybe change this to Retain
+  scaleSize: Small
+  astraResourcesScaler: "Off"
   ingressType: "AccTraefik"  
   imageRegistry:
-    name: "docker-registry:30001/netapp/astracc/22.08.1-26"
+    name: "192.168.0.61:30001/netapp/acc/24.02.0-69"
     secret: "reg-cred-secret"
-  storageClass: "c2-svmacc-nas-basic"
+  storageClass: "c1-svmacc-nas-basic"
+  additionalValues: {}
+  crds:
+    externalTraefik: false
+    externalCertManager: false

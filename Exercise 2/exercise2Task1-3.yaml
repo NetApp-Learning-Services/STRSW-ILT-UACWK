@@ -3,7 +3,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
-  creationTimestamp: null
   name: astracontrolcenters.astra.netapp.io
 spec:
   group: astra.netapp.io
@@ -101,11 +100,6 @@ spec:
                 required:
                 - enrolled
                 type: object
-              avpDeploy:
-                default: false
-                description: 'Option to allow user to disable deployment of AVP operator
-                  Note: AVP Operator is not deployed by default.'
-                type: boolean
               crds:
                 description: Options for how ACC should handle CRDs.Options for how
                   ACC should handle CRDs.
@@ -160,25 +154,26 @@ spec:
               lastName:
                 description: The last name of the SRE supporting Astra.
                 type: string
-              mtls:
-                default:
-                  certDuration: 2140h
-                  enabled: true
-                description: Options for how ACC should implement service to service
-                  mTLS in the cluster.
+              mongoPort:
+                default: 11921
+                description: MongoPort is used to override the port used for communication
+                  with MongoDB
+                format: int64
+                type: integer
+              mongoResources:
+                description: The resource limit for mongodb
                 properties:
-                  certDuration:
-                    default: 2140h
-                    description: The duration of time in hours to use as a lifespan
-                      when issuing service TLS certificates.
+                  memory:
+                    description: The memory limit for mongoDB
                     type: string
-                  enabled:
-                    default: true
-                    description: By default, ACC will use mTLS for service to service
-                      communication. This should be disabled when using a service
-                      mesh to encrypt service to service communication instead.
-                    type: boolean
                 type: object
+              scaleSize:
+                default: Medium
+                description: ScaleSize The size of replicas for ACC services
+                enum:
+                - Small
+                - Medium
+                type: string
               storageClass:
                 description: The storage class to be used for PVCs. If not set, default
                   storage class will be used.
@@ -209,14 +204,15 @@ spec:
                           description: "Condition contains details for one aspect
                             of the current state of this API Resource. --- This struct
                             is intended for direct use as an array at the field path
-                            .status.conditions.  For example, type FooStatus struct{
-                            \    // Represents the observations of a foo's current
-                            state.     // Known .status.conditions.type are: \"Available\",
-                            \"Progressing\", and \"Degraded\"     // +patchMergeKey=type
-                            \    // +patchStrategy=merge     // +listType=map     //
-                            +listMapKey=type     Conditions []metav1.Condition `json:\"conditions,omitempty\"
-                            patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
-                            \n     // other fields }"
+                            .status.conditions.  For example, \n \ttype FooStatus
+                            struct{ \t    // Represents the observations of a foo's
+                            current state. \t    // Known .status.conditions.type
+                            are: \"Available\", \"Progressing\", and \"Degraded\"
+                            \t    // +patchMergeKey=type \t    // +patchStrategy=merge
+                            \t    // +listType=map \t    // +listMapKey=type \t    Conditions
+                            []metav1.Condition `json:\"conditions,omitempty\" patchStrategy:\"merge\"
+                            patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
+                            \n \t    // other fields \t}"
                           properties:
                             lastTransitionTime:
                               description: lastTransitionTime is the last time the
@@ -345,12 +341,6 @@ spec:
                               required:
                               - enrolled
                               type: object
-                            avpDeploy:
-                              default: false
-                              description: 'Option to allow user to disable deployment
-                                of AVP operator Note: AVP Operator is not deployed
-                                by default.'
-                              type: boolean
                             crds:
                               description: Options for how ACC should handle CRDs.Options
                                 for how ACC should handle CRDs.
@@ -413,26 +403,27 @@ spec:
                             lastName:
                               description: The last name of the SRE supporting Astra.
                               type: string
-                            mtls:
-                              default:
-                                certDuration: 2140h
-                                enabled: true
-                              description: Options for how ACC should implement service
-                                to service mTLS in the cluster.
+                            mongoPort:
+                              default: 11921
+                              description: MongoPort is used to override the port
+                                used for communication with MongoDB
+                              format: int64
+                              type: integer
+                            mongoResources:
+                              description: The resource limit for mongodb
                               properties:
-                                certDuration:
-                                  default: 2140h
-                                  description: The duration of time in hours to use
-                                    as a lifespan when issuing service TLS certificates.
+                                memory:
+                                  description: The memory limit for mongoDB
                                   type: string
-                                enabled:
-                                  default: true
-                                  description: By default, ACC will use mTLS for service
-                                    to service communication. This should be disabled
-                                    when using a service mesh to encrypt service to
-                                    service communication instead.
-                                  type: boolean
                               type: object
+                            scaleSize:
+                              default: Medium
+                              description: ScaleSize The size of replicas for ACC
+                                services
+                              enum:
+                              - Small
+                              - Medium
+                              type: string
                             storageClass:
                               description: The storage class to be used for PVCs.
                                 If not set, default storage class will be used.
@@ -477,13 +468,14 @@ spec:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
                     use as an array at the field path .status.conditions.  For example,
-                    type FooStatus struct{     // Represents the observations of a
-                    foo's current state.     // Known .status.conditions.type are:
-                    \"Available\", \"Progressing\", and \"Degraded\"     // +patchMergeKey=type
-                    \    // +patchStrategy=merge     // +listType=map     // +listMapKey=type
-                    \    Conditions []metav1.Condition `json:\"conditions,omitempty\"
-                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
-                    \n     // other fields }"
+                    \n \ttype FooStatus struct{ \t    // Represents the observations
+                    of a foo's current state. \t    // Known .status.conditions.type
+                    are: \"Available\", \"Progressing\", and \"Degraded\" \t    //
+                    +patchMergeKey=type \t    // +patchStrategy=merge \t    // +listType=map
+                    \t    // +listMapKey=type \t    Conditions []metav1.Condition
+                    `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other fields
+                    \t}"
                   properties:
                     lastTransitionTime:
                       description: lastTransitionTime is the last time the condition
@@ -606,11 +598,6 @@ spec:
                     required:
                     - enrolled
                     type: object
-                  avpDeploy:
-                    default: false
-                    description: 'Option to allow user to disable deployment of AVP
-                      operator Note: AVP Operator is not deployed by default.'
-                    type: boolean
                   crds:
                     description: Options for how ACC should handle CRDs.Options for
                       how ACC should handle CRDs.
@@ -668,26 +655,26 @@ spec:
                   lastName:
                     description: The last name of the SRE supporting Astra.
                     type: string
-                  mtls:
-                    default:
-                      certDuration: 2140h
-                      enabled: true
-                    description: Options for how ACC should implement service to service
-                      mTLS in the cluster.
+                  mongoPort:
+                    default: 11921
+                    description: MongoPort is used to override the port used for communication
+                      with MongoDB
+                    format: int64
+                    type: integer
+                  mongoResources:
+                    description: The resource limit for mongodb
                     properties:
-                      certDuration:
-                        default: 2140h
-                        description: The duration of time in hours to use as a lifespan
-                          when issuing service TLS certificates.
+                      memory:
+                        description: The memory limit for mongoDB
                         type: string
-                      enabled:
-                        default: true
-                        description: By default, ACC will use mTLS for service to
-                          service communication. This should be disabled when using
-                          a service mesh to encrypt service to service communication
-                          instead.
-                        type: boolean
                     type: object
+                  scaleSize:
+                    default: Medium
+                    description: ScaleSize The size of replicas for ACC services
+                    enum:
+                    - Small
+                    - Medium
+                    type: string
                   storageClass:
                     description: The storage class to be used for PVCs. If not set,
                       default storage class will be used.
@@ -765,7 +752,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: acc-operator-manager-role
 rules:
 - apiGroups:
@@ -911,14 +897,12 @@ spec:
         - --health-probe-bind-address=:8081
         - --metrics-bind-address=127.0.0.1:8080
         - --leader-elect
-        command:
-        - /manager
         env:
         - name: ACCOP_LOG_LEVEL
           value: "2"
         - name: ACCOP_HELM_INSTALLTIMEOUT
           value: 5m
-        image: ASTRA_IMAGE_REGISTRY/acc-operator:22.05.99
+        image: ASTRA_IMAGE_REGISTRY/acc-operator:24.02.68
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:

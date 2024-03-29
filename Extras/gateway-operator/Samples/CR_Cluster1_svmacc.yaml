@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ontap-cluster1-admin
-  namespace: gateway-systems
+  namespace: gateway-system
 type: kubernetes.io/basic-auth
 stringData:
   username: admin
@@ -25,7 +25,7 @@ metadata:
   namespace: gateway-system
 spec:
   svmName: svmacc
-  svmDeletionPolicy: Retain
+  svmDeletionPolicy: Delete  #only for training
   clusterHost: 192.168.0.101
   debug: false
   aggregates:
@@ -46,7 +46,7 @@ spec:
     enabled: true
     v3: true
     v4: true
-    v41: false
+    v41: true
     interfaces:
     - name: nfs1
       ip: 192.168.0.31

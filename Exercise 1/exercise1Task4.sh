@@ -1,6 +1,7 @@
 # This script has been written for this exercise environment 
 # and is not intented to be used in a production enviroment
 
+#!/bin/bash
 sudo apt install sshpass
 
 for x in $(kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }'); 

@@ -1,6 +1,7 @@
 # This script has been written for this exercise environment 
 # and is not intented to be used in a production enviroment
 
+#!/bin/bash
 REGISTRY_NAME="docker-registry" 
 
 sudo apt install sshpass

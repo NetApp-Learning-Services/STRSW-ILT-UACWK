@@ -11,7 +11,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ontap-cluster1-admin
-  namespace: gateway
+  namespace: gateway-system
 type: kubernetes.io/basic-auth
 stringData:
   username: admin
@@ -23,7 +23,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: ontap-svm0-admin
-  namespace: gateway
+  namespace: gateway-system
 type: kubernetes.io/basic-auth
 stringData:
   username: vsadmin
@@ -31,29 +31,48 @@ stringData:
 
 4. Create / edit a custom resource (CR):
 
-apiVersion: gateway.netapp.com/v1alpha1
+apiVersion: gateway.netapp.com/v1beta1
 kind: StorageVirtualMachine
 metadata:
-  name: svm0
-  namespace: gateway
+  name: storagevirtualmachine-testcase
+  namespace: gateway-system
 spec:
-  svmName: svm0
-  clusterHost: 192.168.0.101
+  svmName: testVs
+  svmComment: "this is a test SVM"
+  svmDeletionPolicy: Retain
+  clusterHost: 192.168.0.102
   debug: false
   aggregates:
-  - name: Cluster1_01_FC_1
+  - name: Cluster2_01_FC_1
   management:
     name: manage1
     ip: 192.168.0.30
     netmask: 255.255.255.0
     broadcastDomain: Default
-    homeNode: Cluster1-01
+    homeNode: Cluster2-01
   vsadminCredentials:
-    name: ontap-svm0-admin
-    namespace: gateway
+    name: ontap-svm-admin
+    namespace: gateway-system
   clusterCredentials:
-    name: ontap-cluster1-admin
-    namespace: gateway
+    name: ontap-cluster-admin
+    namespace: gateway-system
+  iscsi:
+    enabled: true
+    alias: testVs
+    interfaces:
+    - name: iscsi1
+      ip: 192.168.0.51
+      netmask: 255.255.255.0
+      broadcastDomain: Default
+      homeNode: Cluster2-01
+  nvme:
+    enabled: true
+    interfaces:
+    - name: nvme1
+      ip: 192.168.0.81
+      netmask: 255.255.255.0
+      broadcastDomain: Default
+      homeNode: Cluster1-01
   nfs:
     enabled: true
     v3: true
@@ -64,7 +83,7 @@ spec:
       ip: 192.168.0.31
       netmask: 255.255.255.0
       broadcastDomain: Default
-      homeNode: Cluster1-01
+      homeNode: Cluster2-01
     export:
       name: default
       rules:
@@ -74,4 +93,3 @@ spec:
         ro: any
         superuser: any
         anon:  "65534"
-

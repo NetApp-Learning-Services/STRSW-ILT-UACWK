@@ -1,5 +1,6 @@
 # This script has been written for this exercise environment 
 # and is not intented to be used in a production enviroment
+# Execute by: ./exercise1Task5-5.sh
 
 #!/bin/bash
 REGISTRY_NAME="docker-registry" 

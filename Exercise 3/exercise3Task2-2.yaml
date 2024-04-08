@@ -1,0 +1,29 @@
+# kubectl create secret docker-registry reg-cred-secret --docker-server="docker-registry:30001" --docker-username=admin --docker-password=Netapp1! --dry-run=client -o yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: reg-cred-secret
+  namespace: trident
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJkb2NrZXItcmVnaXN0cnk6MzAwMDEiOnsidXNlcm5hbWUiOiJhZG1pbiIsInBhc3N3b3JkIjoiTmV0YXBwMSEiLCJhdXRoIjoiWVdSdGFXNDZUbVYwWVhCd01TRT0ifX19
+
+---
+
+# Generated with kubectl get torc trident -o YAML > exercise3Task2-2.yaml
+# Modify 
+apiVersion: trident.netapp.io/v1
+kind: TridentOrchestrator
+metadata:
+  name: trident
+spec:
+  cloudProvider: ""
+  debug: true
+  namespace: trident
+  windows: false
+  tridentImage: netapp/trident:24.02.0
+  enableACP: true
+  acpImage: docker-registry:30001/netapp/acc/24.02.0-69/trident-acp:24.02.0
+  imagePullSecrets: 
+  - reg-cred-secret

@@ -14,4 +14,4 @@ if [ ! -d "$DIR" ]; then
 fi
 echo "$konfig" > $DIR/config
 #echo "$konfig" > config
-$KUBECONFIG=$DIR/config
+export KUBECONFIG=$DIR/config
